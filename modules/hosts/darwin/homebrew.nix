@@ -97,6 +97,19 @@
     };
   };
 
+  flake.modules.darwin.homebrewM1Minimal = {
+    homebrew = {
+      brews = [
+        "mas"
+      ];
+      casks = [
+        "firefox"
+        "raycast"
+        "visual-studio-code"
+      ];
+    };
+  };
+
   flake.modules.darwin.homebrewWork = {
     homebrew = {
       brews = [

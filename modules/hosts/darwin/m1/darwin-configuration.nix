@@ -1,5 +1,5 @@
-{
-  flake.modules.darwin.m1 =
+let
+  m1Settings =
     { config, pkgs, ... }:
     {
       system = {
@@ -64,4 +64,8 @@
         };
       };
     };
+in
+{
+  flake.modules.darwin.m1 = m1Settings;
+  flake.modules.darwin.m1-min = m1Settings;
 }

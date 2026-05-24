@@ -7,12 +7,16 @@
 let
   host = {
     name = "MacBookAirM1";
-    user.name = "matthias";
+    user.name = "test";
     state = {
       darwin = 4;
       version = "22.05";
     };
     system = "aarch64-darwin";
+  };
+
+  minimalHost = host // {
+    name = "MacBookAirM1Minimal";
   };
 in
 {
@@ -36,6 +40,32 @@ in
       imports = with config.flake.modules.homeManager; [
         claude
         zsh
+      ];
+    };
+  };
+
+  flake.darwinConfigurations.m1-min = inputs.darwin.lib.darwinSystem {
+    system = minimalHost.system;
+    specialArgs = { inherit inputs; };
+    modules = with config.flake.modules.darwin; [
+      base
+      m1-min
+
+      aerospace
+      homebrewM1Minimal
+      kitty
+      nixvim
+    ];
+  };
+
+  flake.modules.darwin.m1-min = {
+    host = minimalHost;
+    home-manager.users.${minimalHost.user.name} = {
+      imports = [
+        config.flake.modules.homeManager."claude-code"
+        config.flake.modules.homeManager.codex
+        config.flake.modules.homeManager."pi-coding-agent"
+        config.flake.modules.homeManager.zsh
       ];
     };
   };
