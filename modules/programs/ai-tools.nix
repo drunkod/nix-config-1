@@ -84,7 +84,7 @@
 
       home = {
         packages = [
-          pkgs.claude-code
+          pkgs.llm-agents.claude-code
           pkgs.git
           pkgs.jq
           pkgs.jujutsu

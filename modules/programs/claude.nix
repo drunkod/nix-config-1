@@ -6,8 +6,8 @@
     }:
     {
       home = {
-        packages = with pkgs; [
-          claude-code
+        packages = [
+          pkgs.llm-agents.claude-code
         ];
         sessionVariables = {
           CLAUDE_CODE_ATTRIBUTION_HEADER = "0";

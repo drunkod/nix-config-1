@@ -4,7 +4,7 @@
     {
       home = {
         packages = [
-          pkgs.pi
+          pkgs.llm-agents.pi
         ];
 
         sessionVariables = {

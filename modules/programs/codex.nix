@@ -36,7 +36,7 @@
     {
       home = {
         packages = [
-          pkgs.codex
+          pkgs.llm-agents.codex
           pkgs.jq
         ];
 
