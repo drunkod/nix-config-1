@@ -49,7 +49,7 @@ Use this after editing configuration files:
 
 ```bash
 cd /Users/test/nix-config
-darwin-rebuild switch --flake .#m1-min
+nh darwin switch .#m1-min
 ```
 
 To test evaluation before switching:
@@ -68,6 +68,15 @@ nix build .#darwinConfigurations.m1-min.system \
   --extra-experimental-features 'nix-command flakes'
 ```
 
+With `nh`, use the flake reference as the positional installable:
+
+```bash
+nh darwin switch --dry .#m1-min
+```
+
+Do not pass `--flake` to `nh darwin switch`; `--flake` is a `darwin-rebuild`
+flag.
+
 ## Update Inputs
 
 Update all flake inputs:
@@ -80,7 +89,7 @@ nix flake update --extra-experimental-features 'nix-command flakes'
 Then rebuild:
 
 ```bash
-darwin-rebuild switch --flake .#m1-min
+nh darwin switch .#m1-min
 ```
 
 Update one input only:
@@ -111,7 +120,6 @@ The `m1-min` profile includes:
 
 - AeroSpace window manager.
 - Kitty terminal.
-- Nixvim.
 - Zsh configuration.
 - Codex, Claude Code, and Pi coding agent config.
 - Minimal Homebrew apps: Firefox, Raycast, Visual Studio Code, and `mas`.

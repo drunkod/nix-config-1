@@ -54,7 +54,6 @@ in
       aerospace
       homebrewM1Minimal
       kitty
-      nixvim
     ];
   };
 

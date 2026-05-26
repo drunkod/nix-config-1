@@ -1,25 +1,32 @@
 {
-  flake.modules.darwin.base = {
-    homebrew = {
-      enable = true;
-      onActivation = {
-        upgrade = false;
-        cleanup = "zap";
+  flake.modules.darwin.base =
+    { config, ... }:
+    {
+      environment.variables = {
+        HOMEBREW_NO_ANALYTICS = "1";
       };
-      casks = [
-        "appcleaner"
-        "betterdisplay"
-        "firefox"
-        "moonlight"
-        "obs"
-        "vlc"
-        # "canon-eos-utility"
-      ];
-      masApps = {
-        "wireguard" = 1451685025;
+      environment.systemPath = [ "${config.homebrew.prefix}/bin" ];
+
+      homebrew = {
+        enable = true;
+        enableBashIntegration = true;
+        enableZshIntegration = true;
+        onActivation = {
+          autoUpdate = false;
+          upgrade = false;
+          cleanup = "zap";
+        };
+        casks = [
+          # "appcleaner"
+          "betterdisplay"
+          "firefox"
+          "moonlight"
+          "obs"
+          "vlc"
+          # "canon-eos-utility"
+        ];
       };
     };
-  };
 
   flake.modules.darwin.homebrewIntel = {
     homebrew = {
@@ -99,12 +106,9 @@
 
   flake.modules.darwin.homebrewM1Minimal = {
     homebrew = {
-      brews = [
-        "mas"
-      ];
       casks = [
         "firefox"
-        "raycast"
+        # "raycast"
         "visual-studio-code"
       ];
     };

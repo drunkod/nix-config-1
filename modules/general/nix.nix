@@ -24,17 +24,7 @@
   };
 
   flake.modules.darwin.base = {
-    nix = {
-      gc = {
-        automatic = true;
-        interval.Day = 7;
-        options = "--delete-older-than 7d";
-      };
-      extraOptions = ''
-        # auto-optimise-store = true
-        experimental-features = nix-command flakes
-      '';
-    };
+    nix.enable = false;
   };
 
   flake.modules.homeManager.disable = { pkgs, ... }: { };

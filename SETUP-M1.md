@@ -17,7 +17,13 @@ nix build .#darwinConfigurations.m1-min.system \
 
 ## Later Switches
 
-After `darwin-rebuild` is available on `PATH`:
+After `nh` is available:
+
+```bash
+nh darwin switch .#m1-min
+```
+
+If you are using `darwin-rebuild` directly:
 
 ```bash
 darwin-rebuild switch --flake .#m1-min

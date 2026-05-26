@@ -1,0 +1,141 @@
+{ lib, ... }:
+let
+  commandsRoot = ./commands;
+  commandDirs = lib.filterAttrs (_: type: type == "directory") (builtins.readDir commandsRoot);
+  importCommandDir =
+    dir:
+    let
+      dirPath = commandsRoot + "/${dir}";
+      commandFiles =
+        lib.filterAttrs (
+          name: type: type == "regular" && lib.hasSuffix ".nix" name
+        ) (builtins.readDir dirPath);
+    in
+    lib.mapAttrs' (
+      name: _:
+      lib.nameValuePair (lib.removeSuffix ".nix" name) (import (dirPath + "/${name}"))
+    ) commandFiles;
+
+  importedCommands = lib.foldl' (acc: dir: acc // importCommandDir dir) { } (builtins.attrNames commandDirs);
+  aiAgents = import ./agents.nix { inherit lib; };
+
+  agentModels = lib.mapAttrs (_name: agent: agent.model) aiAgents.agents;
+
+  commandAgents = {
+    analyze-git-history = "explore";
+    changelog = "refactorer";
+    check-todos = "refactorer";
+    code-review = "debugger";
+    commit-changes = "refactorer";
+    deep-check = "test-runner";
+    dependency-audit = "test-runner";
+    git-bisect = "explore";
+    git-cleanup = "explore";
+    illustrator-brief = "explore";
+    initialization = "refactorer";
+    module-lint = "test-runner";
+    parse-sarif = "test-runner";
+    resolve-conflicts = "refactorer";
+    style-audit = "test-runner";
+  };
+
+  normalizeCommand =
+    name: command:
+    let
+      agent = command.agent or (commandAgents.${name} or "explore");
+      model = command.model or (agentModels.${agent} or { });
+    in
+    {
+      commandName = command.commandName or name;
+      description = command.description or null;
+      allowedTools = command.allowedTools or null;
+      argumentHint = command.argumentHint or null;
+      prompt = command.prompt or "";
+      inherit agent model;
+      subtask = command.subtask or false;
+    };
+
+  commands = lib.mapAttrs normalizeCommand importedCommands;
+
+  modelValue = provider: model: if builtins.isAttrs model then model.${provider} or null else model;
+
+  renderClaudeFrontmatter =
+    command:
+    let
+      model = modelValue "claude" command.model;
+    in
+    ''
+      ---
+      ${lib.optionalString (
+        command.allowedTools != null
+      ) "allowed-tools: ${builtins.toJSON command.allowedTools}"}
+      ${lib.optionalString (
+        command.argumentHint != null
+      ) "argument-hint: ${builtins.toJSON command.argumentHint}"}
+      ${lib.optionalString (
+        command.description != null
+      ) "description: ${builtins.toJSON command.description}"}
+      ${lib.optionalString (model != null) "model: ${builtins.toJSON model}"}
+      ---
+    '';
+
+  renderClaudeMarkdown = command: ''
+    ${lib.trim (renderClaudeFrontmatter command)}
+
+    ${lib.trim command.prompt}
+  '';
+
+  renderOpenCodeFrontmatter =
+    command:
+    let
+      model = modelValue "opencode" command.model;
+    in
+    ''
+      ---
+      ${lib.optionalString (command.description != null) "description: ${command.description}"}
+      ${lib.optionalString (command.agent != null) "agent: ${command.agent}"}
+      ${lib.optionalString (model != null) "model: ${model}"}
+      ${lib.optionalString (command.subtask or false) "subtask: true"}
+      ---
+    '';
+
+  renderOpenCodeMarkdown = command: ''
+    ${lib.trim (renderOpenCodeFrontmatter command)}
+
+    ${lib.trim command.prompt}
+  '';
+
+  renderCopilotSkill = command: ''
+    ---
+    name: ${builtins.toJSON command.commandName}
+    description: ${builtins.toJSON (command.description or "AI command")}
+    ---
+
+    ${lib.trim command.prompt}
+  '';
+
+  toClaudeMarkdown = lib.mapAttrs (_name: renderClaudeMarkdown) commands;
+
+  toCopilotSkills = lib.mapAttrs (_name: renderCopilotSkill) commands;
+
+  toOpenCodeMarkdown = lib.mapAttrs (_name: renderOpenCodeMarkdown) commands;
+
+  toGeminiCommands = lib.mapAttrs (_name: command: {
+    inherit (command) prompt;
+    description = command.description or "AI command";
+  }) commands;
+in
+{
+  inherit
+    commands
+    renderClaudeMarkdown
+    renderCopilotSkill
+    renderOpenCodeMarkdown
+    toClaudeMarkdown
+    toCopilotSkills
+    toOpenCodeMarkdown
+    toGeminiCommands
+    ;
+
+  normalizedCommands = commands;
+}

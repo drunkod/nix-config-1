@@ -37,6 +37,7 @@
       home-manager = {
         useGlobalPkgs = true;
         useUserPackages = true;
+        backupFileExtension = "backup";
         extraSpecialArgs = {
           inherit (config) host;
           osConfig = config;
