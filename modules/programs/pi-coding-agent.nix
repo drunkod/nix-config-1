@@ -4,7 +4,7 @@
     {
       home = {
         packages = [
-          pkgs.pi-coding-agent
+          pkgs.pi
         ];
 
         sessionVariables = {
