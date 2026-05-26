@@ -5,6 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixpkgs-master.url = "github:NixOS/nixpkgs/master";
+    llm-agents.url = "github:numtide/llm-agents.nix";
     flake-parts.url = "github:hercules-ci/flake-parts";
     import-tree.url = "github:vic/import-tree";
 
@@ -59,6 +60,7 @@
             };
             overlays = [
               inputs.nur.overlays.default
+              inputs.llm-agents.overlays.shared-nixpkgs
               (final: prev: {
                 stable = import inputs.nixpkgs-stable {
                   system = prev.system;

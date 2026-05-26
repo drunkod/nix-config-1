@@ -7,7 +7,7 @@
     {
       home = {
         packages = with pkgs; [
-          master.claude-code
+          claude-code
         ];
         sessionVariables = {
           CLAUDE_CODE_ATTRIBUTION_HEADER = "0";
