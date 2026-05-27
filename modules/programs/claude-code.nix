@@ -76,6 +76,13 @@
             ANTHROPIC_BASE_URL = "http://localhost:11434";
             ANTHROPIC_MODEL = "qwen3.5:9b";
           };
+        }
+        // mkClaudeProfile ".claude-freemodel" {
+          model = "claude-sonnet-4.6";
+          env = {
+            ANTHROPIC_API_KEY = "";        # set at shell time, not here
+            ANTHROPIC_BASE_URL = "https://cc.freemodel.dev";
+          };
         };
     in
     {
@@ -97,6 +104,7 @@
         shellAliases = {
           claude-work = "CLAUDE_CONFIG_DIR=$HOME/.claude-work claude";
           claude-api = "CLAUDE_CONFIG_DIR=$HOME/.claude-api claude";
+          claude-freemodel = "ANTHROPIC_API_KEY=$(pass freemodel/apikey) CLAUDE_CONFIG_DIR=$HOME/.claude-freemodel claude";
         };
 
         file = claudeFiles;
