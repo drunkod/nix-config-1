@@ -56,53 +56,47 @@
           name: text:
           lib.nameValuePair ".claude/${prefix}/${name}.md" { inherit text; }
         ) files;
+      mkClaudeProfile =
+        dir: settings:
+        {
+          "${dir}/CLAUDE.md".source = aiTools.base;
+          "${dir}/settings.json".text = mkClaudeSettings settings;
+          "${dir}/skills".source = aiTools.claudeCode.skills;
+        };
       claudeFiles =
         mkClaudeFiles "agents" aiTools.claudeCode.agents
         // mkClaudeFiles "commands" aiTools.claudeCode.commands
-        // {
-          ".claude/CLAUDE.md".source = aiTools.base;
-          ".claude/settings.json".text = mkClaudeSettings { };
-          ".claude/skills".source = aiTools.claudeCode.skills;
-          ".claide-work/CLAUDE.md".source = aiTools.base;
-          ".claide-work/settings.json".text = mkClaudeSettings { };
-          ".claide-work/skills".source = aiTools.claudeCode.skills;
-          ".claude-api/CLAUDE.md".source = aiTools.base;
-          ".claude-api/settings.json".text = mkClaudeSettings {
-            model = "qwen3.5:9b";
-            env = {
-              ANTHROPIC_API_KEY = "";
-              ANTHROPIC_AUTH_TOKEN = "ollama";
-              ANTHROPIC_BASE_URL = "http://localhost:11434";
-              ANTHROPIC_MODEL = "qwen3.5:9b";
-            };
+        // mkClaudeProfile ".claude" { }
+        // mkClaudeProfile ".claude-work" { }
+        // mkClaudeProfile ".claude-api" {
+          model = "qwen3.5:9b";
+          env = {
+            ANTHROPIC_API_KEY = "";
+            ANTHROPIC_AUTH_TOKEN = "ollama";
+            ANTHROPIC_BASE_URL = "http://localhost:11434";
+            ANTHROPIC_MODEL = "qwen3.5:9b";
           };
-          ".claude-api/skills".source = aiTools.claudeCode.skills;
         };
     in
     {
+      imports = [ (import ./claude.nix).flake.modules.homeManager.claude ];
+
       xdg.dataFile."icons/claude.ico".source = claudeCodeDir + "/assets/claude.ico";
 
       home = {
-        packages = [
-          pkgs.llm-agents.claude-code
-          pkgs.git
-          pkgs.jq
-          pkgs.jujutsu
-          pkgs.nano
+        # Hook deps: git/jq for audit scripts, jujutsu for session-start
+        # status, nano as the in-session EDITOR.
+        packages = with pkgs; [
+          git
+          jq
+          jujutsu
+          nano
         ];
 
-        sessionVariables = {
-          CLAUDE_CODE_ATTRIBUTION_HEADER = "0";
-          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1";
-          DISABLE_TELEMETRY = "1";
-        };
-
+        # Profile-switching aliases — claude.nix owns the base aliases.
         shellAliases = {
-          claide-work = "CLAUDE_CONFIG_DIR=$HOME/.claide-work claude";
+          claude-work = "CLAUDE_CONFIG_DIR=$HOME/.claude-work claude";
           claude-api = "CLAUDE_CONFIG_DIR=$HOME/.claude-api claude";
-          claude-default = "claude --model default";
-          claude-opus = "claude --model opus";
-          claude-sonnet = "claude --model sonnet";
         };
 
         file = claudeFiles;
