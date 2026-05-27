@@ -38,6 +38,7 @@ in
     inherit host;
     home-manager.users.${host.user.name} = {
       imports = with config.flake.modules.homeManager; [
+        inputs.sops-nix.homeManagerModules.sops
         claude
         zsh
       ];
@@ -61,6 +62,7 @@ in
     host = minimalHost;
     home-manager.users.${minimalHost.user.name} = {
       imports = [
+        inputs.sops-nix.homeManagerModules.sops
         config.flake.modules.homeManager."claude-code"
         config.flake.modules.homeManager.codex
         config.flake.modules.homeManager."pi-coding-agent"
