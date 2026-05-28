@@ -39,9 +39,11 @@ in
     home-manager.users.${host.user.name} = {
       imports = with config.flake.modules.homeManager; [
         inputs.sops-nix.homeManagerModules.sops
+        sops
         claude
         zsh
       ];
+      services.sops.enable = true;
     };
   };
 
@@ -63,11 +65,13 @@ in
     home-manager.users.${minimalHost.user.name} = {
       imports = [
         inputs.sops-nix.homeManagerModules.sops
+        config.flake.modules.homeManager.sops
         config.flake.modules.homeManager."claude-code"
         config.flake.modules.homeManager.codex
         config.flake.modules.homeManager."pi-coding-agent"
         config.flake.modules.homeManager.zsh
       ];
+      services.sops.enable = true;
     };
   };
 }

@@ -9,6 +9,7 @@
     let
       aiTools = import ../../ai-tools { inherit lib; };
       claudeCodeDir = ../../ai-tools/claude-code;
+
       hookDir = claudeCodeDir + "/hooks";
       hookFiles = lib.filterAttrs (name: type: type == "regular" && lib.hasSuffix ".nix" name) (builtins.readDir hookDir);
       hookSets = lib.mapAttrsToList (name: _: import (hookDir + "/${name}") { inherit config lib pkgs; }) hookFiles;
@@ -80,7 +81,7 @@
         // mkClaudeProfile ".claude-freemodel" {
           model = "claude-sonnet-4.6";
           env = {
-            ANTHROPIC_API_KEY = "";        # set at shell time, not here
+            ANTHROPIC_API_KEY = "";
             ANTHROPIC_BASE_URL = "https://cc.freemodel.dev";
           };
         };
@@ -88,11 +89,15 @@
     {
       imports = [ (import ./claude.nix).flake.modules.homeManager.claude ];
 
+      # Declare the secret here, in the module output
+      sops.secrets."freemodel/apikey" = {
+        sopsFile = ../../secrets/default.yaml;
+        path = "${config.home.homeDirectory}/.config/sops-nix/freemodel-apikey";
+      };
+
       xdg.dataFile."icons/claude.ico".source = claudeCodeDir + "/assets/claude.ico";
 
       home = {
-        # Hook deps: git/jq for audit scripts, jujutsu for session-start
-        # status, nano as the in-session EDITOR.
         packages = with pkgs; [
           git
           jq
@@ -100,11 +105,11 @@
           nano
         ];
 
-        # Profile-switching aliases — claude.nix owns the base aliases.
         shellAliases = {
           claude-work = "CLAUDE_CONFIG_DIR=$HOME/.claude-work claude";
           claude-api = "CLAUDE_CONFIG_DIR=$HOME/.claude-api claude";
-          claude-freemodel = "ANTHROPIC_API_KEY=$(pass freemodel/apikey) CLAUDE_CONFIG_DIR=$HOME/.claude-freemodel claude";
+          # Reference config.sops.secrets here — resolved after module merging
+          claude-freemodel = "ANTHROPIC_API_KEY=$(cat ${config.sops.secrets."freemodel/apikey".path}) CLAUDE_CONFIG_DIR=$HOME/.claude-freemodel claude";
         };
 
         file = claudeFiles;
