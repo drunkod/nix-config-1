@@ -81,7 +81,7 @@
         // mkClaudeProfile ".claude-freemodel" {
           model = "claude-sonnet-4.6";
           env = {
-            ANTHROPIC_API_KEY = "";
+            # ANTHROPIC_API_KEY = "";
             ANTHROPIC_BASE_URL = "https://cc.freemodel.dev";
           };
         };
