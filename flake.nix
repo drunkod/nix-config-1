@@ -38,8 +38,7 @@
 
     nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=latest";
 
-    hyprland.url = "github:hyprwm/Hyprland?submodules=1";
-
+    hyprland.url = "git+https://github.com/hyprwm/Hyprland?submodules=1";
     noctalia.url = "github:noctalia-dev/noctalia-shell";
     noctalia.inputs.nixpkgs.follows = "nixpkgs";
   };
