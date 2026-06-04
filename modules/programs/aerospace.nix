@@ -19,8 +19,7 @@
           key-mapping.preset = "qwerty"
 
           after-startup-command = [
-            'exec-and-forget ${pkgs.jankyborders}/bin/borders active_color=0xffa6a6a6 inactive_color=0x00a6a6a6 style=round width=5.0',
-            'exec-and-forget ~/.config/aerospace/script/bsp.sh'
+            'exec-and-forget ${pkgs.jankyborders}/bin/borders active_color=0xffa6a6a6 inactive_color=0x00a6a6a6 style=round width=5.0'
           ]
           enable-normalization-flatten-containers = false
           enable-normalization-opposite-orientation-for-nested-containers = false
@@ -121,17 +120,17 @@
           alt-shift-k = [ "join-with up", "mode main" ]
           alt-shift-l = [ "join-with right", "mode main" ]
 
-          [workspace-to-monitor-force-assignment]
-          "1" = "main"
-          "2" = "main"
-          "3" = "main"
-          "4" = "main"
-          "5" = "main"
-          "6" = "secondary"
-          "7" = "secondary"
-          "8" = "secondary"
-          "9" = "secondary"
-          "10" = "secondary"
+          # [workspace-to-monitor-force-assignment]
+          # "1" = "main"
+          # "2" = "main"
+          # "3" = "main"
+          # "4" = "main"
+          # "5" = "main"
+          # "6" = "secondary"
+          # "7" = "secondary"
+          # "8" = "secondary"
+          # "9" = "secondary"
+          # "10" = "secondary"
 
           [[on-window-detected]]
           if.app-id = "org.mozilla.firefox"
@@ -144,55 +143,6 @@
           run = 'layout floating'
           check-further-callbacks = true
         '';
-
-        home.file.".config/aerospace/script/bsp.sh" = {
-          executable = true;
-          text = ''
-            #!/bin/bash
-
-            # Kill any existing instance of the script
-            pkill -f "$(basename "$0")" 2>/dev/null
-
-            # Initialize previous window count
-            previous_window_count=$(aerospace list-windows --workspace focused --count)
-
-            # Arrange windows dynamically
-            arrange_windows() {
-                # Get current window count
-                current_window_count=$(aerospace list-windows --workspace focused --count)
-
-                if [ "$current_window_count" -gt "$previous_window_count" ]; then
-                    # Get the number of windows in the focused workspace
-                    workspace_window_count=$(aerospace list-windows --workspace focused --count)
-
-                    if [ "$workspace_window_count" -eq 1 ]; then
-                        # If only one window, split horizontally
-                        if aerospace flatten-workspace-tree && aerospace split horizontall; then
-                            echo "New window split horizontally"
-                        else
-                            echo "Error: Could not split horizontally"
-                        fi
-                    else
-                        # Otherwise, split with opposite orientation
-                        if aerospace split opposite; then
-                            echo "New window split with opposite orientation"
-                        else
-                            echo "Error: Could not split with opposite orientation"
-                        fi
-                    fi
-                fi
-
-                # Update previous window count
-                previous_window_count=$current_window_count
-            }
-
-            # Main loop to arrange windows dynamically
-            while true; do
-                arrange_windows
-                sleep 0.5 # Set polling interval; default 50ms
-            done
-          '';
-        };
       };
     };
 }

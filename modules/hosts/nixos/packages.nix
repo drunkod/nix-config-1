@@ -36,7 +36,6 @@
           feh # Image Viewer
           linux-firmware # Proprietary Hardware Blob
           mpv # Media Player
-          vlc # Media Player
 
           # Apps
           appimage-run # Runs AppImages on NixOS

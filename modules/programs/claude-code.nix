@@ -89,10 +89,12 @@
     {
       imports = [ (import ./claude.nix).flake.modules.homeManager.claude ];
 
-      # Declare the secret here, in the module output
-      sops.secrets."freemodel/apikey" = {
-        sopsFile = ../../secrets/default.yaml;
-        path = "${config.home.homeDirectory}/.config/sops-nix/freemodel-apikey";
+      # Declare the secret here, in the module output (only if sops is enabled)
+      sops.secrets = lib.mkIf (config.services.sops.enable or false) {
+        "freemodel/apikey" = {
+          sopsFile = ../../secrets/default.yaml;
+          path = "${config.home.homeDirectory}/.config/sops-nix/freemodel-apikey";
+        };
       };
 
       xdg.dataFile."icons/claude.ico".source = claudeCodeDir + "/assets/claude.ico";

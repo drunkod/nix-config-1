@@ -7,7 +7,7 @@
       ...
     }:
     let
-      inherit (lib) mkIf types mkEnableOption;
+      inherit (lib) mkIf mkEnableOption;
 
       cfg = config.services.sops;
     in
