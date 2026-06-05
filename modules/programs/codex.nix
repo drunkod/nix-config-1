@@ -9,6 +9,7 @@
     let
       aiTools = import ../../ai-tools { inherit lib; };
       settingsFormat = pkgs.formats.toml { };
+      exoEnabled = false; # Set to true if you run a local exo cluster service
       codexNotify = pkgs.writeShellApplication {
         name = "codex-notify";
         runtimeInputs = [
@@ -41,12 +42,19 @@
         ];
 
         shellAliases = {
-          codex-deep = "codex --profile deep -c model_context_window=1000000 -c model_auto_compact_token_limit=850000";
+          codex-deep = "codex --profile deep";
+          codex-long = "codex --profile long -c model_context_window=1000000 -c model_auto_compact_token_limit=850000";
           codex-nano = "codex --profile nano";
           codex-offline = "codex --profile offline";
           codex-quick = "codex --profile quick";
           codex-spark = "codex --profile spark";
           codex-unsafe = "codex --profile unsafe";
+        }
+        // lib.optionalAttrs exoEnabled {
+          codex-exo = ''f(){ model="$1"; shift; codex -c model_provider='"exo"' -m "$model" "$@"; }; f'';
+          codex-exo-coder = ''codex -c model_provider='"exo"' -m mlx-community/Qwen3-Coder-Next-4bit'';
+          codex-exo-gpt-oss = ''codex -c model_provider='"exo"' -m mlx-community/gpt-oss-20b-MXFP4-Q8'';
+          codex-exo-qwen = ''codex -c model_provider='"exo"' -m mlx-community/Qwen3.6-35B-A3B-5bit'';
         };
 
         file = {
@@ -79,10 +87,31 @@
             model_reasoning_effort = "medium";
             plan_mode_reasoning_effort = "medium";
             service_tier = "fast";
+            model_providers = lib.optionalAttrs exoEnabled {
+              exo = {
+                name = "exo (local cluster)";
+                base_url = "http://localhost:52415/v1";
+                wire_api = "responses";
+                requires_openai_auth = false;
+                request_max_retries = 1;
+                stream_max_retries = 1;
+                stream_idle_timeout_ms = 300000;
+              };
+            };
             notify = [ (lib.getExe codexNotify) ];
             personality = "pragmatic";
             approval_policy = "on-request";
             sandbox_mode = "danger-full-access";
+
+            mcp_servers = if (config.programs.mcp.enable or false) then (
+              lib.mapAttrs (name: server:
+                lib.filterAttrs (n: v: v != null && v != [] && v != {}) {
+                  command = server.command;
+                  args = server.args or [];
+                  env = server.env or {};
+                }
+              ) config.programs.mcp.servers
+            ) else {};
 
             project_root_markers = [
               ".git"
@@ -148,29 +177,31 @@
               };
             };
 
-            projects.${config.home.homeDirectory}.trust_level = "trusted";
+            projects =
+              let
+                trustedProjects = [
+                  "Documents/work"
+                  "Documents/work/fcast-android-sender"
+                ];
+              in
+              {
+                ${config.home.homeDirectory}.trust_level = "trusted";
+              }
+              // builtins.listToAttrs (
+                map (project: {
+                  name = "${config.home.homeDirectory}/${project}";
+                  value = {
+                    trust_level = "trusted";
+                  };
+                }) trustedProjects
+              );
           };
 
           ".codex/AGENTS.md".source = aiTools.base;
 
           ".codex/skills".source = aiTools.codex.skills;
 
-          ".codex/rules/read-only.md".text = ''
-            # Read-only shell commands that should not require repeated approvals.
-            prefix_rule(pattern = ["cat"], decision = "allow")
-            prefix_rule(pattern = ["find"], decision = "allow")
-            prefix_rule(pattern = ["git", "diff"], decision = "allow")
-            prefix_rule(pattern = ["git", "log"], decision = "allow")
-            prefix_rule(pattern = ["git", "show"], decision = "allow")
-            prefix_rule(pattern = ["git", "status"], decision = "allow")
-            prefix_rule(pattern = ["ls"], decision = "allow")
-            prefix_rule(pattern = ["nix", "eval"], decision = "allow")
-            prefix_rule(pattern = ["nix", "flake", "metadata"], decision = "allow")
-            prefix_rule(pattern = ["nix", "flake", "show"], decision = "allow")
-            prefix_rule(pattern = ["pwd"], decision = "allow")
-            prefix_rule(pattern = ["rg"], decision = "allow")
-            prefix_rule(pattern = ["sed", "-n"], decision = "allow")
-          '';
+          ".codex/rules/read-only.md".text = builtins.readFile ./codex-rules.txt;
         };
       };
     };

@@ -2,11 +2,13 @@
   flake.modules.homeManager.claude =
     {
       pkgs,
+      lib,
+      config,
       ...
     }:
     {
       home = {
-        packages = [
+        packages = lib.mkIf (!(config.programs.claude-code.enable or false)) [
           pkgs.llm-agents.claude-code
         ];
         sessionVariables = {

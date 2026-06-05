@@ -40,7 +40,9 @@ in
       imports = with config.flake.modules.homeManager; [
         inputs.sops-nix.homeManagerModules.sops
         sops
-        claude
+        config.flake.modules.homeManager."claude-code"
+        config.flake.modules.homeManager.zed
+        mcp
         zsh
       ];
       services.sops.enable = true;
@@ -67,8 +69,10 @@ in
         inputs.sops-nix.homeManagerModules.sops
         config.flake.modules.homeManager.sops
         config.flake.modules.homeManager."claude-code"
+        config.flake.modules.homeManager.mcp
         config.flake.modules.homeManager.codex
         config.flake.modules.homeManager."pi-coding-agent"
+        config.flake.modules.homeManager.zed
         config.flake.modules.homeManager.zsh
       ];
       services.sops.enable = true;

@@ -15,6 +15,8 @@
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixpkgs-master.url = "github:NixOS/nixpkgs/master";
     llm-agents.url = "github:numtide/llm-agents.nix";
+    mcp-servers-nix.url = "github:natsukium/mcp-servers-nix";
+    mcp-servers-nix.inputs.nixpkgs.follows = "nixpkgs";
     flake-parts.url = "github:hercules-ci/flake-parts";
     import-tree.url = "github:vic/import-tree";
 
@@ -39,6 +41,7 @@
     nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=latest";
 
     hyprland.url = "git+https://github.com/hyprwm/Hyprland?submodules=1";
+
     noctalia.url = "github:noctalia-dev/noctalia-shell";
     noctalia.inputs.nixpkgs.follows = "nixpkgs";
   };

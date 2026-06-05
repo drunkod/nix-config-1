@@ -18,14 +18,94 @@
         inherit config lib;
         profile = "standard";
       };
-      mkClaudeSettings =
+
+      mkExtraProfile = dir: extraSettings:
+        let
+          extraAgents = lib.mapAttrs' (
+            name: text:
+            lib.nameValuePair "${dir}/agents/${name}.md" { inherit text; }
+          ) aiTools.claudeCode.agents;
+          extraCommands = lib.mapAttrs' (
+            name: text:
+            lib.nameValuePair "${dir}/commands/${name}.md" { inherit text; }
+          ) aiTools.claudeCode.commands;
+        in
         {
-          model ? "default",
-          env ? { },
-        }:
-        builtins.toJSON {
+          "${dir}/CLAUDE.md".source = aiTools.base;
+          "${dir}/settings.json".text = builtins.toJSON (
+            {
+              theme = "dark";
+              hooks = hooks;
+              verbose = true;
+              includeCoAuthoredBy = false;
+              gitAttribution = false;
+              attribution = {
+                commit = "";
+                pr = "";
+              };
+              statusLine = {
+                type = "command";
+                command = "input=$(cat); echo \"[$(echo \"$input\" | jq -r '.model.display_name')] $(basename \"$(echo \"$input\" | jq -r '.workspace.current_dir')\")\"";
+                padding = 0;
+              };
+              env = {
+                EDITOR = "nano";
+                USE_BUILTIN_RIPGREP = "0";
+                VISUAL = "nano";
+              };
+              permissions = permissions;
+              "$schema" = "https://json.schemastore.org/claude-code-settings.json";
+            }
+            // extraSettings
+          );
+          "${dir}/skills".source = aiTools.claudeCode.skills;
+        }
+        // extraAgents
+        // extraCommands;
+
+      claudeFiles =
+        mkExtraProfile ".claude-work" { }
+        // mkExtraProfile ".claude-api" {
+          model = "qwen3.5:9b";
+          env = {
+            ANTHROPIC_API_KEY = "";
+            ANTHROPIC_AUTH_TOKEN = "ollama";
+            ANTHROPIC_BASE_URL = "http://localhost:11434";
+            ANTHROPIC_MODEL = "qwen3.5:9b";
+          };
+        }
+        // mkExtraProfile ".claude-freemodel" {
+          model = "claude-sonnet-4.6";
+          env = {
+            ANTHROPIC_BASE_URL = "https://cc.freemodel.dev";
+          };
+        };
+    in
+    {
+      imports = [ (import ./claude.nix).flake.modules.homeManager.claude ];
+
+      # Declare the secret here, in the module output (only if sops is enabled)
+      sops.secrets = lib.mkIf (config.services.sops.enable or false) {
+        "freemodel/apikey" = {
+          sopsFile = ../../secrets/default.yaml;
+          path = "${config.home.homeDirectory}/.config/sops-nix/freemodel-apikey";
+        };
+      };
+
+      xdg.dataFile."icons/claude.ico".source = claudeCodeDir + "/assets/claude.ico";
+
+      programs.claude-code = {
+        enable = true;
+        package = pkgs.llm-agents.claude-code;
+        enableMcpIntegration = true;
+
+        context = aiTools.base;
+        skills = aiTools.claudeCode.skills;
+        agents = aiTools.claudeCode.agents;
+        commands = aiTools.claudeCode.commands;
+
+        settings = {
           theme = "dark";
-          inherit model;
           hooks = hooks;
           verbose = true;
           includeCoAuthoredBy = false;
@@ -46,58 +126,11 @@
             EDITOR = "nano";
             USE_BUILTIN_RIPGREP = "0";
             VISUAL = "nano";
-          }
-          // env;
-
-          inherit permissions;
-        };
-      mkClaudeFiles =
-        prefix: files:
-        lib.mapAttrs' (
-          name: text:
-          lib.nameValuePair ".claude/${prefix}/${name}.md" { inherit text; }
-        ) files;
-      mkClaudeProfile =
-        dir: settings:
-        {
-          "${dir}/CLAUDE.md".source = aiTools.base;
-          "${dir}/settings.json".text = mkClaudeSettings settings;
-          "${dir}/skills".source = aiTools.claudeCode.skills;
-        };
-      claudeFiles =
-        mkClaudeFiles "agents" aiTools.claudeCode.agents
-        // mkClaudeFiles "commands" aiTools.claudeCode.commands
-        // mkClaudeProfile ".claude" { }
-        // mkClaudeProfile ".claude-work" { }
-        // mkClaudeProfile ".claude-api" {
-          model = "qwen3.5:9b";
-          env = {
-            ANTHROPIC_API_KEY = "";
-            ANTHROPIC_AUTH_TOKEN = "ollama";
-            ANTHROPIC_BASE_URL = "http://localhost:11434";
-            ANTHROPIC_MODEL = "qwen3.5:9b";
           };
-        }
-        // mkClaudeProfile ".claude-freemodel" {
-          model = "claude-sonnet-4.6";
-          env = {
-            # ANTHROPIC_API_KEY = "";
-            ANTHROPIC_BASE_URL = "https://cc.freemodel.dev";
-          };
-        };
-    in
-    {
-      imports = [ (import ./claude.nix).flake.modules.homeManager.claude ];
 
-      # Declare the secret here, in the module output (only if sops is enabled)
-      sops.secrets = lib.mkIf (config.services.sops.enable or false) {
-        "freemodel/apikey" = {
-          sopsFile = ../../secrets/default.yaml;
-          path = "${config.home.homeDirectory}/.config/sops-nix/freemodel-apikey";
+          permissions = permissions;
         };
       };
-
-      xdg.dataFile."icons/claude.ico".source = claudeCodeDir + "/assets/claude.ico";
 
       home = {
         packages = with pkgs; [
