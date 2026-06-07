@@ -12,7 +12,18 @@
         };
         ui_font_size = 16;
         buffer_font_size = 14;
-        theme = "One Dark";
+        # Follow macOS light/dark appearance automatically
+        theme = {
+          dark = "One Dark";
+          light = "One Light";
+          mode = "system";
+        };
+        # Auto-approve agent tool actions (allow mode)
+        agent = {
+          tool_permissions = {
+            default = "allow";
+          };
+        };
       } // lib.optionalAttrs (config.programs.mcp.enable or false) {
         context_servers = lib.mapAttrs (name: server: {
             command = server.command;
