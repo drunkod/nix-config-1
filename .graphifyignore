@@ -1,54 +1,61 @@
-# Strict code-only Graphify test profile for this repository.
-# Intentionally keeps only source-like files so `graphify extract` can run offline.
+# Strict offline Graphify profile for this repository.
+#
+# Graphify's current .graphifyignore implementation does not handle the
+# gitignore-style `!*/` directory re-include pattern correctly, so an
+# "ignore everything, then unignore code extensions" strategy ends up
+# re-including docs as well. Instead, explicitly exclude non-code content.
 
-*
-!*/
+# Documentation / prose
+*.md
+*.mdx
+*.rst
+*.adoc
+*.asciidoc
+*.org
+*.txt
+*.rtf
+*.tex
+*.html
+*.htm
+*.yml
+*.yaml
 
-# Keep only source files that Graphify can AST-extract locally.
-!*.nix
-!*.py
-!*.sh
-!*.bash
-!*.js
-!*.ts
-!*.tsx
-!*.jsx
-!*.rs
-!*.c
-!*.h
-!*.cpp
-!*.hpp
-!*.java
-!*.cs
-!*.go
-!*.php
-!*.rb
-!*.swift
-!*.kt
-!*.scala
-!*.lua
-!*.zig
+# Papers / office / data exports
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+*.xls
+*.xlsx
+*.csv
+*.tsv
 
-!**/*.nix
-!**/*.py
-!**/*.sh
-!**/*.bash
-!**/*.js
-!**/*.ts
-!**/*.tsx
-!**/*.jsx
-!**/*.rs
-!**/*.c
-!**/*.h
-!**/*.cpp
-!**/*.hpp
-!**/*.java
-!**/*.cs
-!**/*.go
-!**/*.php
-!**/*.rb
-!**/*.swift
-!**/*.kt
-!**/*.scala
-!**/*.lua
-!**/*.zig
+# Images / media
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+*.tif
+*.tiff
+*.svg
+*.ico
+*.mp3
+*.wav
+*.ogg
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# Generated / local artifacts
+.graphify-src/
+.venv/
+graphify-out/
+result/
+draft/
+
+# Repository docs directories
+/docs/
