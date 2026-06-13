@@ -1,0 +1,10 @@
+# Strict smoke fixture: only Python source.
+*
+
+!src/
+!src/**
+!*.py
+
+# Never index generated Graphify output during repeated local runs.
+graphify-out/
+graphify-out/**
