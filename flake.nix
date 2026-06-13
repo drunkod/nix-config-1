@@ -44,6 +44,8 @@
 
     noctalia.url = "github:noctalia-dev/noctalia-shell";
     noctalia.inputs.nixpkgs.follows = "nixpkgs";
+
+    graphify-vhdl-fresh.url = "path:/Users/test/Documents/work/claude-cowork/graphify-vhdl-fresh";
   };
 
   outputs =
@@ -88,13 +90,24 @@
             ];
           };
 
-          devShells = import ./shells {
+          apps = {
+            graphify-extract = inputs.graphify-vhdl-fresh.apps.${system}.extract;
+            graphify-update = inputs.graphify-vhdl-fresh.apps.${system}.update;
+            graphify-query = inputs.graphify-vhdl-fresh.apps.${system}.query;
+            graphify-mcp = inputs.graphify-vhdl-fresh.apps.${system}.mcp;
+            graphify-test = inputs.graphify-vhdl-fresh.apps.${system}.test;
+            graphify-skill = inputs.graphify-vhdl-fresh.apps.${system}.skill;
+          };
+
+          devShells = (import ./shells {
             inherit
               config
               inputs
               pkgs
               system
               ;
+          }) // {
+            graphify = inputs.graphify-vhdl-fresh.devShells.${system}.default;
           };
         };
     };

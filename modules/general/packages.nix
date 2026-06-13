@@ -1,9 +1,9 @@
-{ lib, ... }:
+{ lib, inputs, ... }:
 {
   flake = { };
 
   perSystem =
-    { pkgs, inputs, ... }:
+    { pkgs, ... }:
     let
       packageFunctions = lib.filesystem.packagesFromDirectoryRecursive {
         directory = ../../packages;
@@ -27,6 +27,8 @@
       );
     in
     {
-      packages = builtPackages;
+      packages = builtPackages // {
+        graphify-skill = inputs.graphify-vhdl-fresh.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      };
     };
 }
