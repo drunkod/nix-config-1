@@ -19,6 +19,29 @@
         profile = "standard";
       };
 
+      commonClaudeSettings = {
+        theme = "dark";
+        hooks = hooks;
+        verbose = true;
+        includeCoAuthoredBy = false;
+        gitAttribution = false;
+        attribution = {
+          commit = "";
+          pr = "";
+        };
+        statusLine = {
+          type = "command";
+          command = "input=$(cat); echo \"[$(echo \"$input\" | jq -r '.model.display_name')] $(basename \"$(echo \"$input\" | jq -r '.workspace.current_dir')\")\"";
+          padding = 0;
+        };
+        env = {
+          EDITOR = "nano";
+          USE_BUILTIN_RIPGREP = "0";
+          VISUAL = "nano";
+        };
+        permissions = permissions;
+      };
+
       mkExtraProfile = dir: extraSettings:
         let
           extraAgents = lib.mapAttrs' (
@@ -33,27 +56,8 @@
         {
           "${dir}/CLAUDE.md".source = aiTools.base;
           "${dir}/settings.json".text = builtins.toJSON (
-            {
-              theme = "dark";
-              hooks = hooks;
-              verbose = true;
-              includeCoAuthoredBy = false;
-              gitAttribution = false;
-              attribution = {
-                commit = "";
-                pr = "";
-              };
-              statusLine = {
-                type = "command";
-                command = "input=$(cat); echo \"[$(echo \"$input\" | jq -r '.model.display_name')] $(basename \"$(echo \"$input\" | jq -r '.workspace.current_dir')\")\"";
-                padding = 0;
-              };
-              env = {
-                EDITOR = "nano";
-                USE_BUILTIN_RIPGREP = "0";
-                VISUAL = "nano";
-              };
-              permissions = permissions;
+            commonClaudeSettings
+            // {
               "$schema" = "https://json.schemastore.org/claude-code-settings.json";
             }
             // extraSettings
@@ -104,32 +108,7 @@
         agents = aiTools.claudeCode.agents;
         commands = aiTools.claudeCode.commands;
 
-        settings = {
-          theme = "dark";
-          hooks = hooks;
-          verbose = true;
-          includeCoAuthoredBy = false;
-          gitAttribution = false;
-
-          attribution = {
-            commit = "";
-            pr = "";
-          };
-
-          statusLine = {
-            type = "command";
-            command = "input=$(cat); echo \"[$(echo \"$input\" | jq -r '.model.display_name')] $(basename \"$(echo \"$input\" | jq -r '.workspace.current_dir')\")\"";
-            padding = 0;
-          };
-
-          env = {
-            EDITOR = "nano";
-            USE_BUILTIN_RIPGREP = "0";
-            VISUAL = "nano";
-          };
-
-          permissions = permissions;
-        };
+        settings = commonClaudeSettings;
       };
 
       home = {
