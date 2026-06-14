@@ -18,6 +18,20 @@ let
   minimalHost = host // {
     name = "MacBookAirM1Minimal";
   };
+  aiCoreImports = with config.flake.modules.homeManager; [
+    inputs.sops-nix.homeManagerModules.sops
+    sops
+    config.flake.modules.homeManager."claude-code"
+    config.flake.modules.homeManager.zed
+    mcp
+    zsh
+    graphify
+  ];
+
+  aiFullImports = aiCoreImports ++ [
+    config.flake.modules.homeManager.codex
+    config.flake.modules.homeManager."pi-coding-agent"
+  ];
 in
 {
   flake.darwinConfigurations.m1 = inputs.darwin.lib.darwinSystem {
@@ -37,15 +51,7 @@ in
   flake.modules.darwin.m1 = {
     inherit host;
     home-manager.users.${host.user.name} = {
-      imports = with config.flake.modules.homeManager; [
-        inputs.sops-nix.homeManagerModules.sops
-        sops
-        config.flake.modules.homeManager."claude-code"
-        config.flake.modules.homeManager.zed
-        mcp
-        zsh
-        graphify
-      ];
+      imports = aiCoreImports;
       services.sops.enable = true;
     };
   };
@@ -66,17 +72,7 @@ in
   flake.modules.darwin.m1-min = {
     host = minimalHost;
     home-manager.users.${minimalHost.user.name} = {
-      imports = [
-        inputs.sops-nix.homeManagerModules.sops
-        config.flake.modules.homeManager.sops
-        config.flake.modules.homeManager."claude-code"
-        config.flake.modules.homeManager.mcp
-        config.flake.modules.homeManager.codex
-        config.flake.modules.homeManager."pi-coding-agent"
-        config.flake.modules.homeManager.zed
-        config.flake.modules.homeManager.zsh
-        config.flake.modules.homeManager.graphify
-      ];
+      imports = aiFullImports;
       services.sops.enable = true;
     };
   };
