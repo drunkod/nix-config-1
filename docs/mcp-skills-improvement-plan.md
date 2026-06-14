@@ -277,6 +277,28 @@ cat .../home-files/.config/zed/settings.json
 cat .../home-files/.codex/config.toml
 ```
 
+### Дополнительные доказательства после реализации
+
+- **Claude extra profiles runtime-proof:**
+
+  ```sh
+  CLAUDE_CONFIG_DIR=$HOME/.claude-work claude mcp list
+  CLAUDE_CONFIG_DIR=$HOME/.claude-api claude mcp list
+  ```
+
+  Оба вызова подтвердили видимость и подключение `graphify` и `slintcn`.
+
+- **Pi skills format-proof:**
+
+  Локальная документация установленного `pi` (`docs/skills.md`) подтверждает, что:
+
+  - `--skill <path>` является repeatable и additive;
+  - в skill locations директории с `SKILL.md` обнаруживаются рекурсивно;
+  - project-level path `.pi/skills/` поддерживается как каталог скиллов.
+
+  Реализация `dist/core/skills.js` также подтверждает рекурсивное обнаружение
+  директорий, содержащих `SKILL.md`.
+
 ### Инварианты приёмки
 
 ```text
