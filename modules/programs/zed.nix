@@ -5,6 +5,14 @@
       settingsFormat = pkgs.formats.json { };
     in
     {
+      # Nix language server + formatter, installed declaratively so Zed never
+      # depends on them being on PATH (Zed launched from Dock/Finder on macOS
+      # does not inherit the shell PATH).
+      home.packages = [
+        pkgs.nil
+        pkgs.nixfmt-rfc-style
+      ];
+
       xdg.configFile."zed/settings.json".source = settingsFormat.generate "zed-settings.json" ({
         telemetry = {
           diagnostics = false;
@@ -18,6 +26,15 @@
           light = "One Light";
           mode = "system";
         };
+        # Point the Nix extension at the nil binary by absolute store path,
+        # and let nil format via nixfmt.
+        lsp = {
+          nil = {
+            binary.path = lib.getExe pkgs.nil;
+            settings.formatting.command = [ (lib.getExe pkgs.nixfmt-rfc-style) ];
+          };
+        };
+        languages.Nix.language_servers = [ "nil" ];
         # Auto-approve agent tool actions (allow mode)
         agent = {
           tool_permissions = {
