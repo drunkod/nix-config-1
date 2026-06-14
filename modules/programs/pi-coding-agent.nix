@@ -1,6 +1,13 @@
 {
   flake.modules.homeManager."pi-coding-agent" =
-    { pkgs, ... }:
+    {
+      lib,
+      pkgs,
+      ...
+    }:
+    let
+      aiTools = import ../../ai-tools { inherit lib; };
+    in
     {
       home = {
         packages = [
@@ -13,15 +20,17 @@
         };
 
         shellAliases = {
-          pi-deep = "pi --model openai-codex/gpt-5.5 --thinking high";
-          pi-json = "pi --mode json";
-          pi-print = "pi --print";
-          pi-quick = "pi --model openai-codex/gpt-5.3-codex-spark --thinking low";
-          pi-read = "pi --tools read,grep,find,ls";
-          pi-spark = "pi --model openai-codex/gpt-5.3-codex-spark --thinking high";
+          pi-deep = "pi --model openai-codex/gpt-5.5 --thinking high --skill $HOME/.pi/skills";
+          pi-json = "pi --mode json --skill $HOME/.pi/skills";
+          pi-print = "pi --print --skill $HOME/.pi/skills";
+          pi-quick = "pi --model openai-codex/gpt-5.3-codex-spark --thinking low --skill $HOME/.pi/skills";
+          pi-read = "pi --tools read,grep,find,ls --skill $HOME/.pi/skills";
+          pi-spark = "pi --model openai-codex/gpt-5.3-codex-spark --thinking high --skill $HOME/.pi/skills";
         };
 
-        file.".pi/agent/settings.json".text = builtins.toJSON {
+        file = {
+          ".pi/skills".source = aiTools.piCodingAgent.skills;
+          ".pi/agent/settings.json".text = builtins.toJSON {
           defaultProvider = "openai-codex";
           defaultModel = "gpt-5.3-codex-spark";
           defaultThinkingLevel = "high";
@@ -34,7 +43,8 @@
             keepRecentTokens = 50000;
           };
 
-          retry.provider.maxRetryDelayMs = 60000;
+            retry.provider.maxRetryDelayMs = 60000;
+          };
         };
       };
     };
