@@ -62,6 +62,7 @@
             }
             // extraSettings
           );
+          "${dir}/.mcp.json".source = config.xdg.configFile."mcp/mcp.json".source;
           "${dir}/skills".source = aiTools.claudeCode.skills;
         }
         // extraAgents
