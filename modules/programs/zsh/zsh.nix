@@ -237,11 +237,7 @@
             finder = "ofd";
             atuin-prune-failed = "atuin search --exclude-exit 0 --delete \"\"";
             atuin-prune-failed-dry-run = "atuin search --exclude-exit 0 --format \"{exit}\t{time}\t{command}\" | rg '^[1-9][0-9]*\t'";
-            graphify-extract = "nix run \"$(graphify_flake_path)\"#graphify-extract -- .";
-            graphify-update = "nix run \"$(graphify_flake_path)\"#graphify-update -- .";
-            graphify-query = "nix run \"$(graphify_flake_path)\"#graphify-query --";
-            graphify-mcp = "nix run \"$(graphify_flake_path)\"#graphify-mcp --";
-            graphify-shell = "nix develop \"$(graphify_flake_path)\"#graphify";
+            # graphify-* aliases live in modules/programs/graphify.nix
           };
           initContent = lib.mkMerge [
             (lib.mkOrder 50 ''
@@ -273,24 +269,6 @@
               source ${config.programs.git.package}/share/git/contrib/completion/git-prompt.sh
             '')
             (lib.mkOrder 600 ''
-              graphify_flake_path() {
-                local candidate
-                for candidate in \
-                  "$HOME/nix-config" \
-                  "$HOME/.setup" \
-                  "$PWD"; do
-                  if [[ -f "$candidate/flake.nix" ]]; then
-                    if command grep -q 'graphify-extract' "$candidate/flake.nix" 2>/dev/null; then
-                      printf '%s\n' "$candidate"
-                      return 0
-                    fi
-                  fi
-                done
-
-                echo "graphify: could not locate nix-config flake. Expected one of: ~/nix-config, ~/.setup, or current directory." >&2
-                return 1
-              }
-
               ${fileContents ./rc/binds.zsh}
               ${fileContents ./rc/modules.zsh}
               ${fileContents ./rc/fzf-tab.zsh}

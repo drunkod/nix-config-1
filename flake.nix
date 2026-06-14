@@ -90,24 +90,14 @@
             ];
           };
 
-          apps = {
-            graphify-extract = inputs.graphify-vhdl-fresh.apps.${system}.extract;
-            graphify-update = inputs.graphify-vhdl-fresh.apps.${system}.update;
-            graphify-query = inputs.graphify-vhdl-fresh.apps.${system}.query;
-            graphify-mcp = inputs.graphify-vhdl-fresh.apps.${system}.mcp;
-            graphify-test = inputs.graphify-vhdl-fresh.apps.${system}.test;
-            graphify-skill = inputs.graphify-vhdl-fresh.apps.${system}.skill;
-          };
-
-          devShells = (import ./shells {
+          # graphify apps / packages / dev shell live in modules/programs/graphify.nix
+          devShells = import ./shells {
             inherit
               config
               inputs
               pkgs
               system
               ;
-          }) // {
-            graphify = inputs.graphify-vhdl-fresh.devShells.${system}.default;
           };
         };
     };

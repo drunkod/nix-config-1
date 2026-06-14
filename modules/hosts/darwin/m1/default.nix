@@ -44,6 +44,7 @@ in
         config.flake.modules.homeManager.zed
         mcp
         zsh
+        graphify
       ];
       services.sops.enable = true;
     };
@@ -74,6 +75,7 @@ in
         config.flake.modules.homeManager."pi-coding-agent"
         config.flake.modules.homeManager.zed
         config.flake.modules.homeManager.zsh
+        config.flake.modules.homeManager.graphify
       ];
       services.sops.enable = true;
     };

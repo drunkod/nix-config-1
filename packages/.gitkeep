@@ -1,0 +1,4 @@
+# Keep this directory tracked in git.
+# modules/general/packages.nix reads ./packages via packagesFromDirectoryRecursive,
+# which fails if the directory is missing on a fresh clone. No local packages
+# currently live here (graphify is provided by the graphify-vhdl-fresh flake input).

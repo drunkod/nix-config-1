@@ -27,8 +27,6 @@
       );
     in
     {
-      packages = builtPackages // {
-        graphify-skill = inputs.graphify-vhdl-fresh.packages.${pkgs.stdenv.hostPlatform.system}.default;
-      };
+      packages = builtPackages;
     };
 }
