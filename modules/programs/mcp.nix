@@ -8,8 +8,7 @@
       ...
     }:
     let
-      graphifyMcpApp =
-        inputs.graphify-vhdl-fresh.apps.${pkgs.stdenv.hostPlatform.system}.mcp.program;
+      graphifyMcpApp = inputs.graphify-vhdl-fresh.apps.${pkgs.stdenv.hostPlatform.system}.mcp.program;
     in
     {
       imports = [
@@ -47,10 +46,21 @@
           };
 
           slintcn = {
-            command = lib.getExe (pkgs.writeShellScriptBin "slintcn-mcp-wrapper" ''
-              export PATH="${pkgs.nodejs}/bin:$PATH"
-              exec npx -y -p slintcn slintcn-mcp
-            '');
+            command = lib.getExe (
+              pkgs.writeShellScriptBin "slintcn-mcp-wrapper" ''
+                export PATH="${pkgs.nodejs}/bin:$PATH"
+                exec npx -y -p slintcn slintcn-mcp
+              ''
+            );
+          };
+
+          chrome-devtools = {
+            command = lib.getExe (
+              pkgs.writeShellScriptBin "chrome-devtools-mcp-wrapper" ''
+                export PATH="${pkgs.nodejs}/bin:$PATH"
+                exec npx -y chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:9222
+              ''
+            );
           };
         };
       };
