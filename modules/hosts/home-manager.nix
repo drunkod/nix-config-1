@@ -28,7 +28,7 @@
     };
 
   flake.modules.darwin.base =
-    { config, ... }:
+    { config, pkgs, ... }:
     {
       imports = [
         inputs.home-manager.darwinModules.home-manager
@@ -37,7 +37,7 @@
       home-manager = {
         useGlobalPkgs = true;
         useUserPackages = true;
-        backupFileExtension = "backup";
+        backupCommand = "${pkgs.trash-cli}/bin/trash";
         extraSpecialArgs = {
           inherit (config) host;
           osConfig = config;
