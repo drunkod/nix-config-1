@@ -53,7 +53,20 @@
     }:
     let
       inherit (lib.strings) fileContents;
+
       nativeHistory = !(config.programs.atuin.enable or false);
+      userHome = config.home.homeDirectory;
+      atuinSocketDir = "${userHome}/.local/share/atuin";
+      atuinSocketPath = "${atuinSocketDir}/daemon.sock";
+      atuinLogDir =
+        if pkgs.stdenv.hostPlatform.isDarwin then
+          "${userHome}/Library/Logs/atuin"
+        else
+          "${userHome}/.local/state/atuin";
+      atuinLogPaths = {
+        stdout = "${atuinLogDir}/atuin.out.log";
+        stderr = "${atuinLogDir}/atuin.err.log";
+      };
     in
     {
       home.file.".p10k.zsh".source = ./p10k.zsh;
@@ -70,6 +83,29 @@
         ZSH_CACHE_DIR = "${config.xdg.cacheHome}/zsh";
       };
 
+      launchd.agents.atuin-daemon.config = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+        ProgramArguments = lib.mkForce [
+          "/bin/sh"
+          "-c"
+          ''
+            /bin/wait4path /nix/store || exit 1
+
+            mkdir -p '${atuinSocketDir}' '${atuinLogDir}'
+
+            # macOS can leave the socket behind across reboots if the daemon is
+            # terminated before its shutdown handler runs. A stale socket makes
+            # Atuin shell hooks fail to record/update recent commands.
+            if [ -S '${atuinSocketPath}' ] && ! /usr/sbin/lsof '${atuinSocketPath}' >/dev/null 2>&1; then
+              rm -f '${atuinSocketPath}'
+            fi
+
+            exec ${lib.getExe config.programs.atuin.package} daemon start
+          ''
+        ];
+        StandardErrorPath = atuinLogPaths.stderr;
+        StandardOutPath = atuinLogPaths.stdout;
+      };
+
       programs = {
         atuin = {
           enable = true;
@@ -83,6 +119,7 @@
             filter_mode = "workspace";
             keymap_mode = "auto";
             show_preview = true;
+            store_failed = true;
             style = "auto";
             update_check = false;
             workspaces = true;
