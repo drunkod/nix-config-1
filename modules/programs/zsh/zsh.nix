@@ -86,6 +86,13 @@
             style = "auto";
             update_check = false;
             workspaces = true;
+
+            # Atuin now tags commands recorded by coding agents and hides
+            # known agents from interactive search by default (`$all-user`).
+            # Show all recorded commands so recent agent-driven commands do
+            # not look like they were skipped.
+            search.authors = [ ];
+
             history_filter = [
               "^(sudo reboot)$"
               "^(reboot)$"
