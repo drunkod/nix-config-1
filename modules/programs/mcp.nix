@@ -8,7 +8,7 @@
       ...
     }:
     let
-      graphifyMcpApp = inputs.self.packages.${pkgs.system}.graphify;
+      graphifyMcpApp = inputs.self.apps.${pkgs.system}.graphify-mcp.program;
     in
     {
       imports = [
