@@ -2,10 +2,11 @@
 
 {
   perSystem =
-    { pkgs, system, ... }:
+    { pkgs, ... }:
     let
       graphify = import ../../nix/graphify.nix {
         inherit pkgs;
+        graphify-src = inputs.graphify-src;
       };
     in
     {
@@ -21,6 +22,7 @@
 
       packages = {
         graphify = graphify.packages.graphify;
+        graphify-mcp = graphify.packages.graphify-mcp;
         graphify-skill = graphify.packages.skill;
       };
 
@@ -34,6 +36,7 @@
     {
       home.packages = [
         inputs.self.packages.${pkgs.system}.graphify
+        inputs.self.packages.${pkgs.system}.graphify-mcp
       ];
 
       programs.zsh = {
@@ -41,7 +44,7 @@
           graphify-extract = "nix run \"$(graphify_flake_path)\"#graphify-extract -- .";
           graphify-update = "nix run \"$(graphify_flake_path)\"#graphify-update -- .";
           graphify-query = "nix run \"$(graphify_flake_path)\"#graphify-query --";
-          graphify-mcp = "nix run \"$(graphify_flake_path)\"#graphify-mcp --";
+          graphify-mcp-run = "nix run \"$(graphify_flake_path)\"#graphify-mcp --";
           graphify-shell = "nix develop \"$(graphify_flake_path)\"#graphify";
         };
 
