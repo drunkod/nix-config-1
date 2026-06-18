@@ -45,7 +45,10 @@
     noctalia.url = "github:noctalia-dev/noctalia-shell";
     noctalia.inputs.nixpkgs.follows = "nixpkgs";
 
-    graphify-vhdl-fresh.url = "path:/Users/test/Documents/work/claude-cowork/graphify-vhdl-fresh";
+    graphify-src = {
+      url = "github:safishamsi/graphify/v8";
+      flake = false;
+    };
   };
 
   outputs =

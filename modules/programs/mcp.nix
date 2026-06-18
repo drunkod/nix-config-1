@@ -8,7 +8,7 @@
       ...
     }:
     let
-      graphifyMcpApp = inputs.graphify-vhdl-fresh.apps.${pkgs.stdenv.hostPlatform.system}.mcp.program;
+      graphifyMcpApp = inputs.self.packages.${pkgs.system}.graphify;
     in
     {
       imports = [

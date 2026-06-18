@@ -1,39 +1,41 @@
-# All Graphify integration in one place.
-#
-# Source of truth: the external `graphify-vhdl-fresh` flake (offline, code-only,
-# no-LLM graphify). This module only re-exposes it into the system config:
-#
-#   • flake apps    graphify-extract / -update / -query / -mcp / -test / -skill
-#   • package       graphify-skill (the Cowork/Desktop Skill zip)
-#   • dev shell     `nix develop .#graphify`
-#   • home-manager  MCP server (auto-discovers graphify-out/graph.json) + zsh aliases
-#
-# To activate on a host, add `graphify` to its home-manager imports.
 { inputs, ... }:
+
 {
-  # ── flake outputs: apps, skill package, dev shell ───────────────────────────
   perSystem =
-    { system, ... }:
+    { pkgs, system, ... }:
+    let
+      graphify = import ../../nix/graphify.nix {
+        inherit pkgs;
+      };
+    in
     {
       apps = {
-        graphify-extract = inputs.graphify-vhdl-fresh.apps.${system}.extract;
-        graphify-update = inputs.graphify-vhdl-fresh.apps.${system}.update;
-        graphify-query = inputs.graphify-vhdl-fresh.apps.${system}.query;
-        graphify-mcp = inputs.graphify-vhdl-fresh.apps.${system}.mcp;
-        graphify-test = inputs.graphify-vhdl-fresh.apps.${system}.test;
-        graphify-skill = inputs.graphify-vhdl-fresh.apps.${system}.skill;
+        graphify = graphify.apps.graphify;
+        graphify-extract = graphify.apps.extract;
+        graphify-update = graphify.apps.update;
+        graphify-query = graphify.apps.query;
+        graphify-mcp = graphify.apps.mcp;
+        graphify-test = graphify.apps.test;
+        graphify-skill = graphify.apps.skill;
       };
 
-      packages.graphify-skill = inputs.graphify-vhdl-fresh.packages.${system}.default;
+      packages = {
+        graphify = graphify.packages.graphify;
+        graphify-skill = graphify.packages.skill;
+      };
 
-      devShells.graphify = inputs.graphify-vhdl-fresh.devShells.${system}.default;
+      checks.graphify-skill = graphify.checks.skill;
+
+      devShells.graphify = graphify.devShells.default;
     };
 
-  # ── home-manager: zsh aliases ───────────────────────────────────────────────
   flake.modules.homeManager.graphify =
-    { lib, ... }:
+    { lib, pkgs, ... }:
     {
-      # Aliases resolve the nix-config flake at runtime via graphify_flake_path.
+      home.packages = [
+        inputs.self.packages.${pkgs.system}.graphify
+      ];
+
       programs.zsh = {
         shellAliases = {
           graphify-extract = "nix run \"$(graphify_flake_path)\"#graphify-extract -- .";
