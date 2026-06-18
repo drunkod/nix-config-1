@@ -1,6 +1,6 @@
 # graphify reference: query, path, explain
 
-Load this when the user asks a question against an existing graph, or runs `/graphify path` or `/graphify explain`. The core's query stub points here for the full traversal flow. These flows use the `graphify query` CLI when it is available and fall back to an inline NetworkX traversal otherwise.
+Load this when the user asks a question against an existing graph, or requests `path`/`explain` behavior. This file was generated from the upstream Claude slash-command skill; in Zed, adapt `/graphify` examples to the configured `graphify-*` wrappers or `nix run <nix-config-flake>#graphify-*` commands. These flows use the `graphify query` CLI when it is available and fall back to an inline NetworkX traversal otherwise.
 
 Two traversal modes - choose based on the question:
 
@@ -14,11 +14,11 @@ First check the graph exists:
 $(cat graphify-out/.graphify_python) -c "
 from pathlib import Path
 if not Path('graphify-out/graph.json').exists():
-    print('ERROR: No graph found. Run /graphify <path> first to build the graph.')
+    print('ERROR: No graph found. Build it first with graphify-extract or nix run <nix-config-flake>#graphify-extract -- <path>.')
     raise SystemExit(1)
 "
 ```
-If it fails, stop and tell the user to run `/graphify <path>` first.
+If it fails, stop and tell the user to build the graph first with `graphify-extract <path>` or `nix run <nix-config-flake>#graphify-extract -- <path>`.
 
 ### Step 0 — Constrained query expansion (REQUIRED before traversal)
 

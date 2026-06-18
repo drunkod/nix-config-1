@@ -1,6 +1,6 @@
 # graphify reference: extra exports and benchmark
 
-Load this when the user passed one of the export flags (`--wiki`, `--neo4j`, `--neo4j-push`, `--falkordb`, `--falkordb-push`, `--svg`, `--graphml`, `--mcp`), or when the corpus is large enough for the token-reduction benchmark. Each step runs only for its own flag.
+Load this when the user asks for optional export flows (`--wiki`, `--neo4j`, `--neo4j-push`, `--falkordb`, `--falkordb-push`, `--svg`, `--graphml`, `--mcp`) or when the corpus is large enough for the token-reduction benchmark. This is a generated upstream reference: export subcommands vary by Graphify version, so verify availability with `graphify --help`, `graphify export --help`, or the configured Nix wrapper before running them. Each step runs only for its own requested flag.
 
 ### Step 6b - Wiki (only if --wiki flag)
 
@@ -62,9 +62,9 @@ graphify export graphml
 python3 -m graphify.serve graphify-out/graph.json
 ```
 
-This starts a stdio MCP server that exposes tools: `query_graph`, `get_node`, `get_neighbors`, `get_community`, `god_nodes`, `graph_stats`, `shortest_path`. Add to Claude Desktop or any MCP-compatible agent orchestrator so other agents can query the graph live.
+This starts a stdio MCP server that exposes tools: `query_graph`, `get_node`, `get_neighbors`, `get_community`, `god_nodes`, `graph_stats`, `shortest_path`. Add it to any MCP-compatible agent orchestrator so agents can query the graph live. In this Zed/Nix setup, prefer the configured `graphify-mcp` wrapper or `nix run <nix-config-flake>#graphify-mcp -- <graph.json>` when available.
 
-To configure in Claude Desktop, add to `claude_desktop_config.json`:
+For MCP clients that use JSON server config, adapt this example:
 ```json
 {
   "mcpServers": {

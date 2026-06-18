@@ -1,6 +1,6 @@
 # graphify reference: add a URL and watch a folder
 
-Load this when the user ran `/graphify add <url>` or passed `--watch`. Neither is part of the default build.
+Load this when the user asks to add a URL to the corpus or use watch mode. This is a generated upstream Claude slash-command reference; in Zed, adapt `/graphify add` and `/graphify --update` examples to the configured wrappers or `nix run <nix-config-flake>#graphify-*` commands. Neither flow is part of the default build.
 
 ## For /graphify add
 
@@ -31,7 +31,7 @@ Supported URL types (auto-detected):
 - Twitter/X → fetched via oEmbed, saved as `.md` with tweet text and author
 - arXiv → abstract + metadata saved as `.md`
 - PDF → downloaded as `.pdf`
-- Images (.png/.jpg/.webp) → downloaded, Claude vision extracts on next run
+- Images (.png/.jpg/.webp) → downloaded; semantic/vision extraction may happen on the next run if explicitly enabled
 - Any webpage → converted to markdown via html2text
 
 ---

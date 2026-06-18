@@ -1,6 +1,6 @@
 # graphify reference: incremental update and cluster-only
 
-Load this only when the user passed `--update` or `--cluster-only`. A first-time full build never reads this file.
+Load this only when the user asks for an incremental update or cluster-only refresh. This is a generated upstream Claude pipeline reference; in Zed/Nix, prefer `graphify-update`, `graphify-extract`, or `nix run <nix-config-flake>#graphify-*` wrappers before using snippets that assume `graphify-out/.graphify_python`. A first-time full build never reads this file.
 
 ## For --update (incremental re-extraction)
 

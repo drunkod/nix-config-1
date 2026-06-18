@@ -68,7 +68,21 @@ offline extract/update
 
 ## Reference sidecars
 
-Load these files only when the task needs the extra detail:
+Load these files only when the task needs the extra detail. These sidecars are
+generated from Graphify's upstream Claude skill, so adapt them to this Zed/Nix
+setup:
+
+- Prefer the `graphify-*` wrappers or `nix run <nix-config-flake>#graphify-*`
+  commands from this `SKILL.md` over `/graphify` slash-command examples.
+- Treat commands in sidecars as version-sensitive upstream references. Verify
+  support with `graphify --help` or wrapper help before running export/import
+  flows that are not listed by the installed CLI.
+- Some snippets assume the Claude pipeline created
+  `graphify-out/.graphify_python`. In this Zed/Nix setup, prefer wrappers or run
+  commands inside `nix develop <nix-config-flake>#graphify` unless that file
+  exists.
+
+Sidecars:
 
 - `references/query.md` — `graphify query`, `path`, and `explain` behavior and examples.
 - `references/update.md` — incremental refresh, cache handling, and update edge cases.
