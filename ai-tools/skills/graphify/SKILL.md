@@ -1,17 +1,19 @@
 ---
 name: graphify
-description: Use when the user wants to map, index, understand, or query a local codebase/folder — building a knowledge graph of files, classes, functions, and their relationships (imports, calls, inherits). Runs fully offline for code-only corpora via tree-sitter. Prefer this over raw Glob/Grep for architecture exploration, "what calls X", "what depends on Y", "trace the path from A to B", or exact graph traversal.
+description: Use when the user wants to map, index, understand, or query a local codebase/folder or existing graphify-out knowledge graph — including architecture questions, file relationships, project content, "what calls X", "what depends on Y", "trace the path from A to B", query/path/explain workflows, graph exports, graph refreshes after edits, or Graphify MCP/direct traversal. Runs fully offline for code-only corpora via tree-sitter; docs/PDFs/images/video may use semantic extraction only when explicitly requested.
 ---
 
-# Graphify (local, offline, code graph)
+# Graphify for Zed (local, offline-first graph)
 
-Build and query a code knowledge graph from a local folder. For code-only corpora,
-Graphify uses deterministic local tree-sitter extraction: no API key, no LLM, and
-nothing leaves the machine. Docs/PDFs/images can trigger semantic model APIs, so
-keep the corpus code-only unless the user explicitly wants semantic extraction.
+Build, refresh, and query a knowledge graph from a local folder in Zed. For
+code-only corpora, Graphify uses deterministic local tree-sitter extraction: no
+API key, no LLM, and nothing leaves the machine. Docs/PDFs/images/video can
+trigger semantic model APIs or transcription, so keep the corpus code-only unless
+the user explicitly requests multimodal/semantic extraction.
 
-This skill is wired to the user's `nix-config` flake integration, not to a
-standalone global `graphify` CLI. Prefer the flake apps below.
+This Zed skill is wired to the user's `nix-config` flake integration, not to a
+Claude slash command or standalone global `graphify` CLI. Prefer the flake apps
+below.
 
 ## Setup assumptions
 
@@ -36,6 +38,10 @@ Interactive shell aliases may exist (`graphify-extract`, `graphify-update`,
 
 ## Core workflow
 
+Fast path: if `graphify-out/graph.json` already exists and the user asks a
+natural-language codebase question, query the existing graph first. Do not
+rebuild unless the user asks for a fresh extraction/update or the graph is stale.
+
 Use this offline pattern:
 
 ```text
@@ -59,6 +65,19 @@ offline extract/update
    - `graph.html` / callflow HTML — visual exploration, if exported
 5. Consult the graph before raw `Glob`/`Grep`/file reads. Use raw source only to
    verify or inspect implementation details after graph exploration.
+
+## Reference sidecars
+
+Load these files only when the task needs the extra detail:
+
+- `references/query.md` — `graphify query`, `path`, and `explain` behavior and examples.
+- `references/update.md` — incremental refresh, cache handling, and update edge cases.
+- `references/exports.md` — HTML/SVG/GraphML/Neo4j/FalkorDB/wiki/export flows.
+- `references/github-and-merge.md` — GitHub repo cloning and multi-repository merge flows.
+- `references/add-watch.md` — URL ingestion and watch mode.
+- `references/transcribe.md` — audio/video transcription before graph extraction.
+- `references/extraction-spec.md` — extraction output/schema expectations.
+- `references/hooks.md` — hook behavior for nudging agents toward existing graphs.
 
 ## Query policy: keyword/entity mode
 
@@ -186,6 +205,7 @@ Usually ignore local/transient artifacts such as:
 ## Notes
 
 - Code-only extraction is local and deterministic; no tokens spent, nothing leaves the machine.
-- Non-code files (docs/PDFs/images) may trigger semantic extraction through model APIs.
-- Keep `.graphifyignore` strict enough to preserve `0 docs, 0 papers, 0 images` for offline privacy.
+- Non-code files (docs/PDFs/images/video) may trigger semantic extraction or transcription through model APIs/tools.
+- Keep `.graphifyignore` strict enough to preserve `0 docs, 0 papers, 0 images` for offline privacy when the user wants code-only analysis.
 - Do not tell the user to run `pip install graphify`; this integrated setup uses the user's flake apps.
+- Do not include Claude-specific `.claude/CLAUDE.md`, `.claude/settings.json`, or `.graphify_version` files in the Zed skill. The Zed skill package is `SKILL.md` plus optional `references/` sidecars.
