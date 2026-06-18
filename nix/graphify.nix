@@ -64,72 +64,86 @@ let
     fi
   '';
 
-  mkApp = name: body: {
-    type = "app";
-    program = "${pkgs.writeShellScriptBin name (bootstrap + "\n" + body)}/bin/${name}";
-  };
-
-  graphifyWrapper = pkgs.writeShellScriptBin "graphify" (bootstrap + ''
-    exec "$VIRTUAL_ENV/bin/graphify" "$@"
-  '');
-
-  graphifyMcpWrapper = pkgs.writeShellScriptBin "graphify-mcp" (bootstrap + ''
-    exec "$VIRTUAL_ENV/bin/graphify-mcp" "$@"
-  '');
-
-  graphifySkillWrapper = pkgs.writeShellScriptBin "graphify-skill" (bootstrap + ''
-    exec "$VIRTUAL_ENV/bin/graphify" install "$@"
-  '');
-
   cleanOutputs = target: ''
     rm -f "${target}/graphify-out/graph.json" "${target}/graphify-out/manifest.json"
+  '';
+
+  mkGraphifyBin = name: body:
+    pkgs.writeShellScriptBin name (bootstrap + "\n" + body);
+
+  mkApp = name: bin: {
+    type = "app";
+    program = "${bin}/bin/${name}";
+  };
+
+  graphifyWrapper = mkGraphifyBin "graphify" ''
+    exec "$VIRTUAL_ENV/bin/graphify" "$@"
+  '';
+
+  graphifyExtractWrapper = mkGraphifyBin "graphify-extract" ''
+    target="''${1:-.}"
+    if [ "$#" -gt 0 ]; then
+      shift
+    fi
+    ${cleanOutputs "$target"}
+    exec "$VIRTUAL_ENV/bin/graphify" extract "$target" --no-cluster "$@"
+  '';
+
+  graphifyUpdateWrapper = mkGraphifyBin "graphify-update" ''
+    target="''${1:-.}"
+    if [ "$#" -gt 0 ]; then
+      shift
+    fi
+    ${cleanOutputs "$target"}
+    exec "$VIRTUAL_ENV/bin/graphify" update "$target" --no-cluster "$@"
+  '';
+
+  graphifyQueryWrapper = mkGraphifyBin "graphify-query" ''
+    exec "$VIRTUAL_ENV/bin/graphify" query "$@"
+  '';
+
+  graphifyMcpWrapper = mkGraphifyBin "graphify-mcp" ''
+    exec "$VIRTUAL_ENV/bin/graphify-mcp" "$@"
+  '';
+
+  graphifyMcpRunWrapper = mkGraphifyBin "graphify-mcp-run" ''
+    graph="''${1:-graphify-out/graph.json}"
+    if [ ! -f "$graph" ]; then
+      echo "ERROR: $graph not found — run 'graphify extract <project>' first" >&2
+      exit 1
+    fi
+    exec "$VIRTUAL_ENV/bin/graphify-mcp" "$graph"
+  '';
+
+  graphifyTestWrapper = mkGraphifyBin "graphify-test" ''
+    exec "$VIRTUAL_ENV/bin/graphify" "$@"
+  '';
+
+  graphifySkillWrapper = mkGraphifyBin "graphify-skill" ''
+    exec "$VIRTUAL_ENV/bin/graphify" install "$@"
   '';
 in
 {
   apps = rec {
-    graphify = mkApp "graphify" ''
-      exec "$VIRTUAL_ENV/bin/graphify" "$@"
-    '';
-
-    extract = mkApp "graphify-extract" ''
-      target="''${1:-.}"
-      ${cleanOutputs "$target"}
-      exec "$VIRTUAL_ENV/bin/graphify" extract "$target" --no-cluster
-    '';
-
-    update = mkApp "graphify-update" ''
-      target="''${1:-.}"
-      ${cleanOutputs "$target"}
-      exec "$VIRTUAL_ENV/bin/graphify" extract "$target" --no-cluster
-    '';
-
-    query = mkApp "graphify-query" ''
-      exec "$VIRTUAL_ENV/bin/graphify" query "$@"
-    '';
-
-    mcp = mkApp "graphify-mcp" ''
-      graph="''${1:-graphify-out/graph.json}"
-      if [ ! -f "$graph" ]; then
-        echo "ERROR: $graph not found — run 'graphify extract <project>' first" >&2
-        exit 1
-      fi
-      exec "$VIRTUAL_ENV/bin/graphify-mcp" "$graph"
-    '';
-
-    test = mkApp "graphify-test" ''
-      exec "$VIRTUAL_ENV/bin/graphify" "$@"
-    '';
-
-    skill = mkApp "graphify-skill" ''
-      exec "$VIRTUAL_ENV/bin/graphify" install "$@"
-    '';
+    graphify = mkApp "graphify" graphifyWrapper;
+    extract = mkApp "graphify-extract" graphifyExtractWrapper;
+    update = mkApp "graphify-update" graphifyUpdateWrapper;
+    query = mkApp "graphify-query" graphifyQueryWrapper;
+    mcp = mkApp "graphify-mcp-run" graphifyMcpRunWrapper;
+    test = mkApp "graphify-test" graphifyTestWrapper;
+    skill = mkApp "graphify-skill" graphifySkillWrapper;
 
     default = graphify;
   };
 
   packages = {
     graphify = graphifyWrapper;
+    graphify-extract = graphifyExtractWrapper;
+    graphify-update = graphifyUpdateWrapper;
+    graphify-query = graphifyQueryWrapper;
     graphify-mcp = graphifyMcpWrapper;
+    graphify-mcp-run = graphifyMcpRunWrapper;
+    graphify-test = graphifyTestWrapper;
     skill = graphifySkillWrapper;
     default = graphifyWrapper;
   };
@@ -137,19 +151,32 @@ in
   devShells.default = pkgs.mkShell {
     packages = toolchain ++ [
       graphifyWrapper
+      graphifyExtractWrapper
+      graphifyUpdateWrapper
+      graphifyQueryWrapper
       graphifyMcpWrapper
+      graphifyMcpRunWrapper
+      graphifyTestWrapper
       graphifySkillWrapper
     ];
 
     shellHook = ''
-      echo "Graphify CLI is available as: graphify"
-      echo "Run: graphify --help"
+      echo "Graphify CLI commands are available:"
+      echo "  graphify --help"
+      echo "  graphify-extract ."
+      echo "  graphify-update ."
+      echo "  graphify-query \"question\" --graph graphify-out/graph.json"
+      echo "  graphify-mcp --help"
     '';
   };
 
   checks.skill = pkgs.runCommand "graphify-wrapper-check" { } ''
     test -x ${graphifyWrapper}/bin/graphify
+    test -x ${graphifyExtractWrapper}/bin/graphify-extract
+    test -x ${graphifyUpdateWrapper}/bin/graphify-update
+    test -x ${graphifyQueryWrapper}/bin/graphify-query
     test -x ${graphifyMcpWrapper}/bin/graphify-mcp
+    test -x ${graphifyMcpRunWrapper}/bin/graphify-mcp-run
     mkdir -p "$out"
   '';
 }
