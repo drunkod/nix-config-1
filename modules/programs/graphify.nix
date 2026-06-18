@@ -16,6 +16,7 @@
         graphify-update = graphify.apps.update;
         graphify-query = graphify.apps.query;
         graphify-mcp = graphify.apps.mcp;
+        graphify-mcp-run = graphify.apps.mcp-run;
         graphify-test = graphify.apps.test;
         graphify-skill = graphify.apps.skill;
       };
