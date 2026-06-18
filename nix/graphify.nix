@@ -129,7 +129,8 @@ in
     extract = mkApp "graphify-extract" graphifyExtractWrapper;
     update = mkApp "graphify-update" graphifyUpdateWrapper;
     query = mkApp "graphify-query" graphifyQueryWrapper;
-    mcp = mkApp "graphify-mcp-run" graphifyMcpRunWrapper;
+    mcp = mkApp "graphify-mcp" graphifyMcpWrapper;
+    mcp-run = mkApp "graphify-mcp-run" graphifyMcpRunWrapper;
     test = mkApp "graphify-test" graphifyTestWrapper;
     skill = mkApp "graphify-skill" graphifySkillWrapper;
 
