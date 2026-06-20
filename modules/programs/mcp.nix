@@ -134,6 +134,16 @@
               ''
             );
           };
+
+          codewebchat-review-handoff = {
+            command = "${pkgs.nodejs}/bin/node";
+            args = [
+              "/Users/test/Documents/work/CodeWebChat/apps/mcp-server/dist/index.js"
+              "--mode"
+              "host"
+            ];
+            env = { };
+          };
         };
       };
     };
