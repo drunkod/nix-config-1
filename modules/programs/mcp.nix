@@ -126,6 +126,15 @@
             );
           };
 
+          jazz-docs = {
+            command = lib.getExe (
+              pkgs.writeShellScriptBin "jazz-docs-mcp-wrapper" ''
+                export PATH="${pkgs.nodejs_22}/bin:$PATH"
+                exec npx -y jazz-tools@alpha mcp
+              ''
+            );
+          };
+
           chrome-devtools = {
             command = lib.getExe (
               pkgs.writeShellScriptBin "chrome-devtools-mcp-wrapper" ''
