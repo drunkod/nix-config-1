@@ -144,6 +144,19 @@
             );
           };
 
+          codewebchat = {
+            command = lib.getExe pkgs.nodejs_22;
+            args = [
+              "/Users/test/Documents/work/CodeWebChat/apps/mcp-server/dist/index.js"
+            ];
+            env = {
+              CWC_TRANSPORT = "jazz";
+              JAZZ_APP_ID = "e06170f2-5bf5-421d-ae69-997e6a3c0bb7";
+              JAZZ_ADMIN_SECRET = "cwc-rt-admin";
+              JAZZ_BACKEND_SECRET = "cwc-rt-backend";
+            };
+          };
+
           codewebchat-review-handoff = {
             command = lib.getExe (
               pkgs.writeShellScriptBin "codewebchat-review-handoff-mcp-wrapper" ''
