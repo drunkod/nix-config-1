@@ -145,12 +145,12 @@
           };
 
           codewebchat-review-handoff = {
-            command = "${pkgs.nodejs}/bin/node";
-            args = [
-              "/Users/test/Documents/work/CodeWebChat/apps/mcp-server/dist/index.js"
-              "--mode"
-              "host"
-            ];
+            command = lib.getExe (
+              pkgs.writeShellScriptBin "codewebchat-review-handoff-mcp-wrapper" ''
+                cd /Users/test/Documents/work/CodeWebChat
+                exec ${lib.getExe pkgs.nix} develop path:/Users/test/Documents/work/CodeWebChat --command node apps/mcp-server/dist/index.js --mode host
+              ''
+            );
             env = { };
           };
         };
