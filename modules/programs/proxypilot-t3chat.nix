@@ -38,6 +38,9 @@
       configDir = "${config.home.homeDirectory}/.config/proxypilot-t3chat";
       configPath = "${configDir}/config.yaml";
       logDir = "${config.home.homeDirectory}/Library/Logs/ProxyPilot";
+      serviceLabel = "org.kendrick.proxypilot-t3chat";
+      serviceTarget = "gui/$(id -u)/${serviceLabel}";
+      servicePlist = "${config.home.homeDirectory}/Library/LaunchAgents/${serviceLabel}.plist";
 
       # Local-only API key used by your local OpenAI-compatible tools.
       # This is not the t3.chat cookie or convexSessionId.
@@ -89,7 +92,7 @@
       launchd.agents.proxypilot-t3chat = {
         enable = true;
         config = {
-          Label = "org.kendrick.proxypilot-t3chat";
+          Label = serviceLabel;
           ProgramArguments = [
             "${inputs.self.packages.${pkgs.system}.t3chat-macos-launch}/bin/t3chat-macos-launch"
           ];
@@ -112,12 +115,11 @@
       };
 
       home.shellAliases = {
-        t3chat-import = "t3chat-import";
         t3chat-models = "t3chat-health";
         t3chat-logs = "tail -f ${logDir}/proxypilot.err.log";
-        t3chat-status = "launchctl print gui/$(id -u)/org.kendrick.proxypilot-t3chat";
-        t3chat-start = "launchctl kickstart -k gui/$(id -u)/org.kendrick.proxypilot-t3chat";
-        t3chat-stop = "launchctl bootout gui/$(id -u)/org.kendrick.proxypilot-t3chat 2>/dev/null || true";
+        t3chat-status = "launchctl print ${serviceTarget}";
+        t3chat-start = "launchctl bootstrap gui/$(id -u) ${servicePlist} 2>/dev/null || true; launchctl kickstart -k ${serviceTarget}";
+        t3chat-stop = "launchctl bootout ${serviceTarget} 2>/dev/null || true";
         t3chat-restart = "t3chat-stop; t3chat-start";
       };
     };
