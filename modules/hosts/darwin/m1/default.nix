@@ -31,14 +31,10 @@ let
     graphify
   ];
 
-  proxypilotT3chatModule =
-    import ../../../../docs/examples/t3chat-macos-launch-m1-min/proxypilot-t3chat.nix
-      { inherit inputs; };
-
   aiFullImports = aiCoreImports ++ [
     config.flake.modules.homeManager.codex
     config.flake.modules.homeManager."pi-coding-agent"
-    proxypilotT3chatModule.flake.modules.homeManager."proxypilot-t3chat"
+    config.flake.modules.homeManager.proxypilot-t3chat
   ];
 in
 {
