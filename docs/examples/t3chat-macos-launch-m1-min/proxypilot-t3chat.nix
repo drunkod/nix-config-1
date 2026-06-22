@@ -35,6 +35,17 @@
     let
       proxypilot = inputs.pp-t3.packages.${pkgs.system}.proxypilot;
 
+      t3chatMacOSLaunch = pkgs.writeShellApplication {
+        name = "t3chat-macos-launch";
+        runtimeInputs = [ proxypilot ];
+        text = ''
+          set -euo pipefail
+
+          config_path="''${PROXYPILOT_T3CHAT_CONFIG:-$HOME/.config/proxypilot-t3chat/config.yaml}"
+          exec ${proxypilot}/bin/proxypilot --config "$config_path"
+        '';
+      };
+
       configDir = "${config.home.homeDirectory}/.config/proxypilot-t3chat";
       configPath = "${configDir}/config.yaml";
       logDir = "${config.home.homeDirectory}/Library/Logs/ProxyPilot";
@@ -75,7 +86,7 @@
     {
       home.packages = [
         proxypilot
-        inputs.self.packages.${pkgs.system}.t3chat-macos-launch
+        t3chatMacOSLaunch
         t3chatImport
         t3chatHealth
       ];
@@ -91,7 +102,7 @@
         config = {
           Label = "org.kendrick.proxypilot-t3chat";
           ProgramArguments = [
-            "${inputs.self.packages.${pkgs.system}.t3chat-macos-launch}/bin/t3chat-macos-launch"
+            "${t3chatMacOSLaunch}/bin/t3chat-macos-launch"
           ];
           RunAtLoad = true;
           KeepAlive = true;

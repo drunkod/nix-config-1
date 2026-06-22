@@ -26,11 +26,14 @@ let
     config.flake.modules.homeManager.zed
     mcp
     zsh
+    ssh
     kitty
     graphify
   ];
 
-  proxypilotT3chatModule = import ../../../programs/proxypilot-t3chat.nix;
+  proxypilotT3chatModule =
+    import ../../../../docs/examples/t3chat-macos-launch-m1-min/proxypilot-t3chat.nix
+      { inherit inputs; };
 
   aiFullImports = aiCoreImports ++ [
     config.flake.modules.homeManager.codex

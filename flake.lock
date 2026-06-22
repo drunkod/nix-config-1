@@ -1015,11 +1015,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1782125249,
-        "narHash": "sha256-4PWtX5qSwx/UpAqlmryIyoY05yUf9+TOT9r9sJkux+g=",
+        "lastModified": 1782134811,
+        "narHash": "sha256-qoiZ2u2mVocBxEI5g5EklgWPmVNe0fg5RNWoHXys8f8=",
         "ref": "t3go",
-        "rev": "95d071903300cc67d6ad9916b086c8b24e97f44b",
-        "revCount": 3421,
+        "rev": "49377be2befffc3d3fff9af06589cb5537077d56",
+        "revCount": 3424,
         "type": "git",
         "url": "ssh://git@github.com/drunkod/pp-t3.git"
       },
