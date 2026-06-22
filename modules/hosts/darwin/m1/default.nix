@@ -25,6 +25,7 @@ let
     config.flake.modules.homeManager.zed
     mcp
     zsh
+    kitty
     graphify
   ];
 
