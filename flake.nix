@@ -49,6 +49,19 @@
       url = "github:safishamsi/graphify/v8";
       flake = false;
     };
+
+    # ProxyPilot fork with native t3.chat support.
+    # Recommended for this private repo: SSH URL so Nix can authenticate via your GitHub SSH key.
+    pp-t3 = {
+      url = "git+ssh://git@github.com/drunkod/pp-t3.git?ref=t3go";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Local development alternative:
+    # pp-t3 = {
+    #   url = "path:/Users/test/src/pp-t3";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
   };
 
   outputs =

@@ -18,6 +18,7 @@ let
   minimalHost = host // {
     name = "MacBookAirM1Minimal";
   };
+
   aiCoreImports = with config.flake.modules.homeManager; [
     inputs.sops-nix.homeManagerModules.sops
     sops
@@ -29,9 +30,12 @@ let
     graphify
   ];
 
+  proxypilotT3chatModule = import ../../../programs/proxypilot-t3chat.nix;
+
   aiFullImports = aiCoreImports ++ [
     config.flake.modules.homeManager.codex
     config.flake.modules.homeManager."pi-coding-agent"
+    proxypilotT3chatModule.flake.modules.homeManager."proxypilot-t3chat"
   ];
 in
 {

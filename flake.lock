@@ -1008,6 +1008,27 @@
         "type": "github"
       }
     },
+    "pp-t3": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1782125249,
+        "narHash": "sha256-4PWtX5qSwx/UpAqlmryIyoY05yUf9+TOT9r9sJkux+g=",
+        "ref": "t3go",
+        "rev": "95d071903300cc67d6ad9916b086c8b24e97f44b",
+        "revCount": 3421,
+        "type": "git",
+        "url": "ssh://git@github.com/drunkod/pp-t3.git"
+      },
+      "original": {
+        "ref": "t3go",
+        "type": "git",
+        "url": "ssh://git@github.com/drunkod/pp-t3.git"
+      }
+    },
     "pre-commit-hooks": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -1048,6 +1069,7 @@
         "nixvim": "nixvim",
         "noctalia": "noctalia",
         "nur": "nur",
+        "pp-t3": "pp-t3",
         "sops-nix": "sops-nix",
         "stylix": "stylix"
       }
