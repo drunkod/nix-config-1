@@ -145,23 +145,34 @@
           };
 
           codewebchat = {
-            command = lib.getExe pkgs.nodejs_22;
-            args = [
-              "/Users/test/Documents/work/CodeWebChat/apps/mcp-server/dist/index.js"
-            ];
-            env = {
-              CWC_TRANSPORT = "jazz";
-              JAZZ_APP_ID = "e06170f2-5bf5-421d-ae69-997e6a3c0bb7";
-              JAZZ_ADMIN_SECRET = "cwc-rt-admin";
-              JAZZ_BACKEND_SECRET = "cwc-rt-backend";
-            };
-          };
-
-          codewebchat-review-handoff = {
             command = lib.getExe (
-              pkgs.writeShellScriptBin "codewebchat-review-handoff-mcp-wrapper" ''
-                cd /Users/test/Documents/work/CodeWebChat
-                exec ${lib.getExe pkgs.nix} develop path:/Users/test/Documents/work/CodeWebChat --command node apps/mcp-server/dist/index.js --mode host
+              pkgs.writeShellScriptBin "codewebchat-mcp-wrapper" ''
+                set -euo pipefail
+
+                export PATH="${pkgs.nodejs_22}/bin:$PATH"
+
+                repo="/Users/test/Documents/work/CodeWebChat"
+                cd "$repo"
+
+                if [ ! -s .jazz/app-id ]; then
+                  echo "codewebchat MCP: missing .jazz/app-id. Run scripts/jazz-server.sh once first." >&2
+                  exit 1
+                fi
+
+                if [ ! -f apps/mcp-server/dist/index.js ]; then
+                  echo "codewebchat MCP: missing apps/mcp-server/dist/index.js. Run scripts/build.sh first." >&2
+                  exit 1
+                fi
+
+                export CWC_ALLOW_OUTSIDE_NIX=1
+                export CWC_TRANSPORT="jazz"
+                export JAZZ_EXTERNAL_SERVER="1"
+                export JAZZ_SERVER_URL="ws://localhost:1625"
+                export JAZZ_APP_ID="$(cat .jazz/app-id)"
+                export JAZZ_ADMIN_SECRET="cwc-rt-admin"
+                export JAZZ_BACKEND_SECRET="cwc-rt-backend"
+
+                exec scripts/run-jazz-external.sh
               ''
             );
             env = { };
