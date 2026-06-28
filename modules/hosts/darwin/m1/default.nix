@@ -32,6 +32,7 @@ let
   ];
 
   aiFullImports = aiCoreImports ++ [
+    repo-harness
     config.flake.modules.homeManager.codex
     config.flake.modules.homeManager."pi-coding-agent"
     config.flake.modules.homeManager.proxypilot-t3chat
