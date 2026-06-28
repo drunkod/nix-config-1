@@ -14,9 +14,13 @@
         onActivation = {
           autoUpdate = false;
           upgrade = false;
-          # Homebrew Bundle no longer accepts nix-darwin's generated
-          # --force-cleanup flag for cleanup = "zap" on newer brew versions.
+          # TODO: switch back to `cleanup = "zap"` once nix-darwin emits
+          # `--cleanup --zap` instead of the removed `--force-cleanup` flag.
           cleanup = "none";
+          extraFlags = [
+            "--cleanup"
+            "--zap"
+          ];
         };
         casks = [
           # "appcleaner"
