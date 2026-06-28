@@ -57,7 +57,6 @@ in
         mime
 
         claude
-        repo-harness
         kitty
         obs
 
