@@ -11,15 +11,16 @@ let
   ];
 
   binPath = lib.makeBinPath toolchain;
+  defaultExtras = "mcp,watch,svg,sql,terraform";
 
   # Runtime bootstrap for the Python package. The Graphify source is pinned by
   # flake.lock, while Python wheels are managed by uv in a user-writable venv.
   #
-  # Defaults install useful CLI extras but intentionally avoid the upstream
-  # "all" extra because it includes dm/video dependencies that are fragile or
-  # very heavy on macOS. Override when needed, for example:
+  # The default extras cover code extraction, MCP, watching, SVG export, SQL,
+  # and Terraform. Opt into heavier semantic/document providers explicitly:
   #
   #   GRAPHIFY_UV_EXTRAS=all graphify --help
+  #   GRAPHIFY_UV_EXTRAS=mcp,pdf,office graphify --help
   #   GRAPHIFY_UV_EXTRAS= graphify --help
   #
   bootstrap = ''
@@ -29,42 +30,53 @@ let
     state_dir="''${GRAPHIFY_NIX_STATE_DIR:-''${XDG_DATA_HOME:-$HOME/.local/share}/graphify-nix}"
     venv_dir="$state_dir/.venv"
     src_dir="$state_dir/src"
-    marker="$state_dir/source-path"
+    marker="$state_dir/install-id"
+    extras="''${GRAPHIFY_UV_EXTRAS-${defaultExtras}}"
+    install_id="${graphify-src}|$extras"
+    installed_id=""
+    needs_install=0
 
     mkdir -p "$state_dir"
 
-    if [ ! -d "$venv_dir" ]; then
-      uv venv --quiet "$venv_dir"
-    fi
-
-    # shellcheck disable=SC1091
-    . "$venv_dir/bin/activate"
-
-    current_source="${graphify-src}"
-    installed_source=""
     if [ -f "$marker" ]; then
-      installed_source="$(cat "$marker")"
+      IFS= read -r installed_id < "$marker" || true
     fi
 
-    if [ "$installed_source" != "$current_source" ] || [ ! -x "$venv_dir/bin/graphify" ]; then
-      rm -rf "$src_dir"
+    if [ "$installed_id" != "$install_id" ] || [ ! -x "$venv_dir/bin/graphify" ]; then
+      needs_install=1
+    fi
+
+    case ",$extras," in
+      *,mcp,*)
+        if [ ! -x "$venv_dir/bin/graphify-mcp" ]; then
+          needs_install=1
+        fi
+        ;;
+    esac
+
+    if [ "$needs_install" -eq 1 ]; then
+      rm -rf "$venv_dir" "$src_dir"
+      uv venv --quiet "$venv_dir"
+
       mkdir -p "$src_dir"
       cp -R "${graphify-src}/." "$src_dir/"
       chmod -R u+w "$src_dir"
 
-      extras="''${GRAPHIFY_UV_EXTRAS-mcp,pdf,office,watch,svg,sql,terraform,openai,anthropic,gemini,bedrock,ollama,kimi,chinese,neo4j,falkordb,postgres}"
       install_spec="$src_dir"
       if [ -n "$extras" ]; then
         install_spec="$src_dir[$extras]"
       fi
 
       echo "→ Installing Graphify into $venv_dir ..." >&2
-      uv pip install "$install_spec" --quiet
-      printf '%s\n' "$current_source" > "$marker"
+      uv pip install --python "$venv_dir/bin/python" "$install_spec" --quiet
+      printf '%s\n' "$install_id" > "$marker"
     fi
+
+    # shellcheck disable=SC1091
+    . "$venv_dir/bin/activate"
   '';
 
-  cleanOutputs = target: ''
+  resetExtractOutputs = target: ''
     rm -f "${target}/graphify-out/graph.json" "${target}/graphify-out/manifest.json"
   '';
 
@@ -85,8 +97,8 @@ let
   graphifyResolveCandidate = ''
     graphify_resolve_candidate() {
       local candidate="''${1:-}"
-      local candidate_dir
-      local candidate_base
+      local candidate_dir=""
+      local candidate_base=""
 
       [ -n "$candidate" ] || return 1
 
@@ -102,55 +114,68 @@ let
     }
   '';
 
-  graphifyFindGraph = ''
-    graphify_find_graph() {
-      local candidate=""
+  # Automatic discovery is deliberately project-scoped. It never reads the
+  # saved global graph and never falls back to unrelated repositories.
+  graphifyFindProjectGraph = ''
+    graphify_find_project_graph() {
       local dir=""
-      local fallbacks=""
-      local -a fallback_candidates=()
 
       graph=""
+      graph_source=""
 
       if [ -n "''${GRAPHIFY_GRAPH_PATH:-}" ]; then
-        graphify_resolve_candidate "$GRAPHIFY_GRAPH_PATH" || true
+        if ! graphify_resolve_candidate "$GRAPHIFY_GRAPH_PATH"; then
+          echo "graphify MCP: GRAPHIFY_GRAPH_PATH is not a readable graph: $GRAPHIFY_GRAPH_PATH" >&2
+          return 2
+        fi
+        graph_source="GRAPHIFY_GRAPH_PATH"
+        return 0
       fi
 
-      if [ -z "$graph" ] && [ -f "$state_file" ]; then
-        IFS= read -r candidate < "$state_file" || true
-        graphify_resolve_candidate "$candidate" || true
+      if [ -n "''${GRAPHIFY_PROJECT_ROOT:-}" ]; then
+        if ! graphify_resolve_candidate "$GRAPHIFY_PROJECT_ROOT"; then
+          echo "graphify MCP: GRAPHIFY_PROJECT_ROOT does not contain graphify-out/graph.json: $GRAPHIFY_PROJECT_ROOT" >&2
+          return 2
+        fi
+        graph_source="GRAPHIFY_PROJECT_ROOT"
+        return 0
       fi
 
-      if [ -z "$graph" ] && [ -n "''${GRAPHIFY_PROJECT_ROOT:-}" ]; then
-        graphify_resolve_candidate "$GRAPHIFY_PROJECT_ROOT" || true
+      dir="$(pwd -P)"
+      while true; do
+        if graphify_resolve_candidate "$dir"; then
+          graph_source="workspace search"
+          return 0
+        fi
+
+        if [ "$dir" = "/" ]; then
+          break
+        fi
+
+        dir="$(dirname "$dir")"
+      done
+
+      return 1
+    }
+  '';
+
+  graphifyFindSavedGraph = ''
+    graphify_find_saved_graph() {
+      local candidate=""
+
+      graph=""
+      graph_source="saved state"
+
+      if [ ! -f "$state_file" ]; then
+        echo "graphify MCP: no graph is saved; run graphify-mcp-set-graph <project-or-graph>" >&2
+        return 1
       fi
 
-      if [ -z "$graph" ]; then
-        dir="$PWD"
-        while true; do
-          if graphify_resolve_candidate "$dir"; then
-            break
-          fi
-
-          if [ "$dir" = "/" ]; then
-            break
-          fi
-
-          dir="$(dirname "$dir")"
-        done
+      IFS= read -r candidate < "$state_file" || true
+      if ! graphify_resolve_candidate "$candidate"; then
+        echo "graphify MCP: saved graph no longer exists: $candidate" >&2
+        return 2
       fi
-
-      if [ -z "$graph" ]; then
-        fallbacks="''${GRAPHIFY_MCP_FALLBACKS:-$HOME/nix-config:$HOME/.setup:$HOME/Documents/work/nix-config:$HOME/.graphify/global-graph.json}"
-        IFS=':' read -r -a fallback_candidates <<< "$fallbacks"
-
-        for candidate in "''${fallback_candidates[@]}"; do
-          if graphify_resolve_candidate "$candidate"; then
-            break
-          fi
-        done
-      fi
-
-      [ -n "$graph" ]
     }
   '';
 
@@ -163,16 +188,17 @@ let
     if [ "$#" -gt 0 ]; then
       shift
     fi
-    ${cleanOutputs "$target"}
+    ${resetExtractOutputs "$target"}
     exec "$VIRTUAL_ENV/bin/graphify" extract "$target" --no-cluster "$@"
   '';
 
+  # Update must preserve graph.json and manifest.json because they are the
+  # incremental input. The previous wrapper deleted them before every update.
   graphifyUpdateWrapper = mkGraphifyBin "graphify-update" ''
     target="''${1:-.}"
     if [ "$#" -gt 0 ]; then
       shift
     fi
-    ${cleanOutputs "$target"}
     exec "$VIRTUAL_ENV/bin/graphify" update "$target" --no-cluster "$@"
   '';
 
@@ -181,27 +207,36 @@ let
   '';
 
   graphifyMcpWrapper = mkGraphifyBin "graphify-mcp" ''
+    if [ ! -x "$VIRTUAL_ENV/bin/graphify-mcp" ]; then
+      echo "graphify MCP: graphify-mcp is not installed; include the mcp extra in GRAPHIFY_UV_EXTRAS" >&2
+      exit 1
+    fi
     exec "$VIRTUAL_ENV/bin/graphify-mcp" "$@"
   '';
 
   graphifyMcpFindGraphWrapper = pkgs.writeShellScriptBin "graphify-mcp-find-graph" ''
     set -euo pipefail
-    ${graphifyMcpState}
     ${graphifyResolveCandidate}
-    ${graphifyFindGraph}
+    ${graphifyFindProjectGraph}
 
-    if ! graphify_find_graph; then
-      echo "graphify MCP: graph.json not found. Set GRAPHIFY_GRAPH_PATH, run graphify-mcp-set-graph, or run from a project containing graphify-out/graph.json" >&2
-      exit 1
+    if graphify_find_project_graph; then
+      echo "graphify MCP: selected graph via $graph_source: $graph" >&2
+      printf '%s\n' "$graph"
+      exit 0
     fi
 
-    printf '%s\n' "$graph"
+    status=$?
+    if [ "$status" -eq 1 ]; then
+      echo "graphify MCP: no project graph found. Set GRAPHIFY_GRAPH_PATH, set GRAPHIFY_PROJECT_ROOT, or start the client inside a project containing graphify-out/graph.json" >&2
+    fi
+    exit "$status"
   '';
 
   graphifyMcpSetGraphWrapper = pkgs.writeShellScriptBin "graphify-mcp-set-graph" ''
     set -euo pipefail
     ${graphifyMcpState}
     ${graphifyResolveCandidate}
+    ${graphifyFindSavedGraph}
 
     case "''${1:-}" in
       --clear)
@@ -210,20 +245,22 @@ let
         exit 0
         ;;
       --show)
-        if [ ! -f "$state_file" ]; then
-          echo "graphify MCP: no graph is currently saved" >&2
-          exit 1
+        if graphify_find_saved_graph; then
+          printf '%s\n' "$graph"
+          exit 0
         fi
+        exit $?
+        ;;
+      --help|-h)
+        cat <<'EOF'
+Usage:
+  graphify-mcp-set-graph <project-directory-or-graph.json>
+  graphify-mcp-set-graph --show
+  graphify-mcp-set-graph --clear
 
-        candidate=""
-        IFS= read -r candidate < "$state_file" || true
-        graph=""
-        if ! graphify_resolve_candidate "$candidate"; then
-          echo "graphify MCP: saved graph no longer exists: $candidate" >&2
-          exit 1
-        fi
-
-        printf '%s\n' "$graph"
+Saved state is used only by graphify-mcp-saved. It is never consulted by
+project-scoped graphify-mcp-auto.
+EOF
         exit 0
         ;;
     esac
@@ -255,26 +292,42 @@ let
     set -euo pipefail
     ${graphifyResolveCandidate}
 
-    candidate="''${1:-graphify-out/graph.json}"
-    if [ "$#" -gt 0 ]; then
-      shift
+    if [ "$#" -eq 0 ]; then
+      echo "Usage: graphify-mcp-run <project-directory-or-graph.json> [graphify-mcp arguments...]" >&2
+      exit 2
     fi
+
+    candidate="$1"
+    shift
 
     graph=""
     if ! graphify_resolve_candidate "$candidate"; then
       echo "graphify MCP: graph.json not found at $candidate" >&2
-      echo "graphify MCP: run 'graphify extract <project>' first" >&2
+      echo "graphify MCP: run graphify-extract for the project first" >&2
       exit 1
     fi
 
+    echo "graphify MCP: selected explicit graph: $graph" >&2
     exec ${graphifyMcpWrapper}/bin/graphify-mcp "$graph" "$@"
   '';
 
   graphifyMcpAutoWrapper = pkgs.writeShellScriptBin "graphify-mcp-auto" ''
     set -euo pipefail
     graph="$(${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph)"
-    echo "graphify MCP: using graph $graph" >&2
     exec ${graphifyMcpWrapper}/bin/graphify-mcp "$graph" "$@"
+  '';
+
+  graphifyMcpSavedWrapper = pkgs.writeShellScriptBin "graphify-mcp-saved" ''
+    set -euo pipefail
+    ${graphifyMcpState}
+    ${graphifyResolveCandidate}
+    ${graphifyFindSavedGraph}
+
+    if graphify_find_saved_graph; then
+      echo "graphify MCP: selected graph via $graph_source: $graph" >&2
+      exec ${graphifyMcpWrapper}/bin/graphify-mcp "$graph" "$@"
+    fi
+    exit $?
   '';
 
   graphifyTestWrapper = mkGraphifyBin "graphify-test" ''
@@ -296,6 +349,7 @@ in
     mcp-set-graph = mkApp "graphify-mcp-set-graph" graphifyMcpSetGraphWrapper;
     mcp-run = mkApp "graphify-mcp-run" graphifyMcpRunWrapper;
     mcp-auto = mkApp "graphify-mcp-auto" graphifyMcpAutoWrapper;
+    mcp-saved = mkApp "graphify-mcp-saved" graphifyMcpSavedWrapper;
     test = mkApp "graphify-test" graphifyTestWrapper;
     skill = mkApp "graphify-skill" graphifySkillWrapper;
 
@@ -312,6 +366,7 @@ in
     graphify-mcp-set-graph = graphifyMcpSetGraphWrapper;
     graphify-mcp-run = graphifyMcpRunWrapper;
     graphify-mcp-auto = graphifyMcpAutoWrapper;
+    graphify-mcp-saved = graphifyMcpSavedWrapper;
     graphify-test = graphifyTestWrapper;
     graphify-skill = graphifySkillWrapper;
     skill = graphifySkillWrapper;
@@ -329,6 +384,7 @@ in
       graphifyMcpSetGraphWrapper
       graphifyMcpRunWrapper
       graphifyMcpAutoWrapper
+      graphifyMcpSavedWrapper
       graphifyTestWrapper
       graphifySkillWrapper
     ];
@@ -340,7 +396,9 @@ in
       echo "  graphify-update ."
       echo "  graphify-query \"question\" --graph graphify-out/graph.json"
       echo "  graphify-mcp-auto"
+      echo "  graphify-mcp-run /absolute/project/graphify-out/graph.json"
       echo "  graphify-mcp-set-graph ."
+      echo "  graphify-mcp-saved"
     '';
   };
 
@@ -354,17 +412,47 @@ in
     test -x ${graphifyMcpSetGraphWrapper}/bin/graphify-mcp-set-graph
     test -x ${graphifyMcpRunWrapper}/bin/graphify-mcp-run
     test -x ${graphifyMcpAutoWrapper}/bin/graphify-mcp-auto
+    test -x ${graphifyMcpSavedWrapper}/bin/graphify-mcp-saved
+
+    if grep -q 'rm -f .*graphify-out/graph.json' ${graphifyUpdateWrapper}/bin/graphify-update; then
+      echo "graphify-update must preserve the existing graph" >&2
+      exit 1
+    fi
 
     export HOME="$TMPDIR/home"
     export XDG_STATE_HOME="$TMPDIR/state"
-    project="$TMPDIR/project"
-    mkdir -p "$project/graphify-out"
-    touch "$project/graphify-out/graph.json"
 
-    selected="$(${graphifyMcpSetGraphWrapper}/bin/graphify-mcp-set-graph "$project")"
-    test "$selected" = "$project/graphify-out/graph.json"
-    test "$(${graphifyMcpSetGraphWrapper}/bin/graphify-mcp-set-graph --show)" = "$selected"
-    test "$(${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph)" = "$selected"
+    saved_project="$TMPDIR/saved-project"
+    workspace="$TMPDIR/workspace"
+    mkdir -p "$saved_project/graphify-out" "$workspace/graphify-out" "$workspace/nested/path"
+    touch "$saved_project/graphify-out/graph.json"
+    touch "$workspace/graphify-out/graph.json"
+
+    saved="$(${graphifyMcpSetGraphWrapper}/bin/graphify-mcp-set-graph "$saved_project")"
+    test "$saved" = "$saved_project/graphify-out/graph.json"
+    test "$(${graphifyMcpSetGraphWrapper}/bin/graphify-mcp-set-graph --show)" = "$saved"
+
+    cd "$workspace/nested/path"
+    found="$(${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph)"
+    test "$found" = "$workspace/graphify-out/graph.json"
+
+    rm "$workspace/graphify-out/graph.json"
+    if ${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph >/dev/null 2>&1; then
+      echo "project discovery incorrectly used saved global state" >&2
+      exit 1
+    fi
+    touch "$workspace/graphify-out/graph.json"
+
+    found="$(GRAPHIFY_GRAPH_PATH="$saved_project/graphify-out/graph.json" ${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph)"
+    test "$found" = "$saved_project/graphify-out/graph.json"
+
+    found="$(GRAPHIFY_PROJECT_ROOT="$saved_project" ${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph)"
+    test "$found" = "$saved_project/graphify-out/graph.json"
+
+    if GRAPHIFY_GRAPH_PATH="$TMPDIR/missing.json" ${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph >/dev/null 2>&1; then
+      echo "invalid GRAPHIFY_GRAPH_PATH must fail closed" >&2
+      exit 1
+    fi
 
     ${graphifyMcpSetGraphWrapper}/bin/graphify-mcp-set-graph --clear
     test ! -e "$XDG_STATE_HOME/graphify/mcp-graph-path"
