@@ -40,7 +40,16 @@
         graphify-skill = graphify.packages.graphify-skill;
       };
 
-      checks.graphify-skill = graphify.checks.skill;
+      # graphify.nix stores the pinned version in a shell variable, so the
+      # generated wrapper contains mcp_version="1.26.0" rather than a fully
+      # expanded mcp==1.26.0 argument. Keep the full upstream check while
+      # correcting that generated-script assertion.
+      checks.graphify-skill = graphify.checks.skill.overrideAttrs (old: {
+        buildCommand = builtins.replaceStrings
+          [ "grep -Fq 'mcp==1.26.0'" ]
+          [ "grep -Fq 'mcp_version=\"1.26.0\"'" ]
+          old.buildCommand;
+      });
 
       devShells.graphify = graphify.devShells.default;
     };
