@@ -114,14 +114,18 @@ let
     }
   '';
 
-  # Automatic discovery is deliberately project-scoped. It never reads the
-  # saved global graph and never falls back to unrelated repositories.
+  # Automatic discovery is deliberately project-scoped. It never reads saved
+  # global state, never searches fallback repositories, and never climbs above
+  # the nearest Git repository root. Non-Git folders must use an explicit
+  # GRAPHIFY_PROJECT_ROOT or GRAPHIFY_GRAPH_PATH.
   graphifyFindProjectGraph = ''
     graphify_find_project_graph() {
       local dir=""
+      local git_root=""
 
       graph=""
       graph_source=""
+      graph_error=""
 
       if [ -n "''${GRAPHIFY_GRAPH_PATH:-}" ]; then
         if ! graphify_resolve_candidate "$GRAPHIFY_GRAPH_PATH"; then
@@ -143,9 +147,9 @@ let
 
       dir="$(pwd -P)"
       while true; do
-        if graphify_resolve_candidate "$dir"; then
-          graph_source="workspace search"
-          return 0
+        if [ -e "$dir/.git" ]; then
+          git_root="$dir"
+          break
         fi
 
         if [ "$dir" = "/" ]; then
@@ -155,7 +159,18 @@ let
         dir="$(dirname "$dir")"
       done
 
-      return 1
+      if [ -z "$git_root" ]; then
+        graph_error="current directory is not inside a Git repository; set GRAPHIFY_PROJECT_ROOT or GRAPHIFY_GRAPH_PATH"
+        return 1
+      fi
+
+      if ! graphify_resolve_candidate "$git_root"; then
+        graph_error="Git repository root has no graphify-out/graph.json: $git_root"
+        return 1
+      fi
+
+      graph_source="Git repository root"
+      return 0
     }
   '';
 
@@ -229,7 +244,7 @@ let
     fi
 
     if [ "$status" -eq 1 ]; then
-      echo "graphify MCP: no project graph found. Set GRAPHIFY_GRAPH_PATH, set GRAPHIFY_PROJECT_ROOT, or start the client inside a project containing graphify-out/graph.json" >&2
+      echo "graphify MCP: ''${graph_error:-no project graph found}" >&2
     fi
     exit "$status"
   '';
@@ -428,10 +443,23 @@ in
     export XDG_STATE_HOME="$TMPDIR/state"
 
     saved_project="$TMPDIR/saved-project"
-    workspace="$TMPDIR/workspace"
-    mkdir -p "$saved_project/graphify-out" "$workspace/graphify-out" "$workspace/nested/path"
+    ancestor="$TMPDIR/ancestor"
+    workspace="$ancestor/workspace"
+    non_git="$TMPDIR/non-git"
+
+    mkdir -p \
+      "$saved_project/graphify-out" \
+      "$ancestor/graphify-out" \
+      "$workspace/.git" \
+      "$workspace/graphify-out" \
+      "$workspace/nested/path" \
+      "$non_git/graphify-out" \
+      "$non_git/nested"
+
     touch "$saved_project/graphify-out/graph.json"
+    touch "$ancestor/graphify-out/graph.json"
     touch "$workspace/graphify-out/graph.json"
+    touch "$non_git/graphify-out/graph.json"
 
     saved="$(${graphifyMcpSetGraphWrapper}/bin/graphify-mcp-set-graph "$saved_project")"
     test "$saved" = "$saved_project/graphify-out/graph.json"
@@ -443,10 +471,19 @@ in
 
     rm "$workspace/graphify-out/graph.json"
     if ${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph >/dev/null 2>&1; then
-      echo "project discovery incorrectly used saved global state" >&2
+      echo "project discovery climbed above the Git root or used saved state" >&2
       exit 1
     fi
     touch "$workspace/graphify-out/graph.json"
+
+    cd "$non_git/nested"
+    if ${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph >/dev/null 2>&1; then
+      echo "automatic discovery must fail outside a Git repository" >&2
+      exit 1
+    fi
+
+    found="$(GRAPHIFY_PROJECT_ROOT="$non_git" ${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph)"
+    test "$found" = "$non_git/graphify-out/graph.json"
 
     found="$(GRAPHIFY_GRAPH_PATH="$saved_project/graphify-out/graph.json" ${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph)"
     test "$found" = "$saved_project/graphify-out/graph.json"
