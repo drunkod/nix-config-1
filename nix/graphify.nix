@@ -12,9 +12,13 @@ let
 
   binPath = lib.makeBinPath toolchain;
   defaultExtras = "mcp,watch,svg,sql,terraform";
+  defaultMcpVersion = "1.26.0";
 
   # Runtime bootstrap for the Python package. The Graphify source is pinned by
   # flake.lock, while Python wheels are managed by uv in a user-writable venv.
+  # Graphify's current MCP implementation imports the v1 SDK API
+  # `mcp.types.AnyUrl`, so the compatible MCP SDK is pinned as part of the
+  # runtime identity and verified before reuse.
   #
   # The default extras cover code extraction, MCP, watching, SVG export, SQL,
   # and Terraform. Opt into heavier semantic/document providers explicitly:
@@ -32,9 +36,17 @@ let
     src_dir="$state_dir/src"
     marker="$state_dir/install-id"
     extras="''${GRAPHIFY_UV_EXTRAS-${defaultExtras}}"
-    install_id="${graphify-src}|$extras"
+    mcp_version="${defaultMcpVersion}"
+    wants_mcp=0
+    install_id="${graphify-src}|$extras|mcp==$mcp_version"
     installed_id=""
     needs_install=0
+
+    case ",$extras," in
+      *,mcp,*|*,all,*)
+        wants_mcp=1
+        ;;
+    esac
 
     mkdir -p "$state_dir"
 
@@ -46,13 +58,20 @@ let
       needs_install=1
     fi
 
-    case ",$extras," in
-      *,mcp,*)
-        if [ ! -x "$venv_dir/bin/graphify-mcp" ]; then
-          needs_install=1
-        fi
-        ;;
-    esac
+    if [ "$wants_mcp" -eq 1 ]; then
+      if [ ! -x "$venv_dir/bin/graphify-mcp" ] || [ ! -x "$venv_dir/bin/python" ]; then
+        needs_install=1
+      elif ! "$venv_dir/bin/python" - "$mcp_version" <<'PY'
+import sys
+from importlib.metadata import version
+from mcp.types import AnyUrl
+
+raise SystemExit(0 if version("mcp") == sys.argv[1] else 1)
+PY
+      then
+        needs_install=1
+      fi
+    fi
 
     if [ "$needs_install" -eq 1 ]; then
       rm -rf "$venv_dir" "$src_dir"
@@ -68,7 +87,15 @@ let
       fi
 
       echo "→ Installing Graphify into $venv_dir ..." >&2
-      uv pip install --python "$venv_dir/bin/python" "$install_spec" --quiet
+      if [ "$wants_mcp" -eq 1 ]; then
+        uv pip install \
+          --python "$venv_dir/bin/python" \
+          "$install_spec" \
+          "mcp==$mcp_version" \
+          --quiet
+      else
+        uv pip install --python "$venv_dir/bin/python" "$install_spec" --quiet
+      fi
       printf '%s\n' "$install_id" > "$marker"
     fi
 
@@ -438,6 +465,9 @@ in
       echo "graphify-update must preserve the existing graph" >&2
       exit 1
     fi
+
+    grep -Fq 'mcp==${defaultMcpVersion}' ${graphifyMcpWrapper}/bin/graphify-mcp
+    grep -Fq 'from mcp.types import AnyUrl' ${graphifyMcpWrapper}/bin/graphify-mcp
 
     export HOME="$TMPDIR/home"
     export XDG_STATE_HOME="$TMPDIR/state"
