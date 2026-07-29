@@ -7,10 +7,11 @@ REPO_A="$TEST_ROOT/repo-a"
 REPO_B="$TEST_ROOT/repo-b"
 NON_GIT="$TEST_ROOT/non-git"
 LOG_DIR="$TEST_ROOT/logs"
+RUNTIME_DIR="${GRAPHIFY_NIX_STATE_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/graphify-nix}"
+RUNTIME_PYTHON="$RUNTIME_DIR/.venv/bin/python"
+EXPECTED_MCP_VERSION="1.26.0"
 
 unset GRAPHIFY_GRAPH_PATH GRAPHIFY_PROJECT_ROOT GRAPHIFY_MCP_STATE_FILE
-
-trap 'echo "FAILED at line $LINENO. Logs: '"$LOG_DIR"'" >&2' ERR
 
 section() {
   printf '\n\n============================================================\n'
@@ -293,7 +294,21 @@ set -e
 
 pass "Non-Git folders require an explicit root and invalid paths fail closed"
 
-section "10. Test MCP server startup"
+section "10. Verify MCP Python SDK compatibility"
+
+[ -x "$RUNTIME_PYTHON" ] || fail "Graphify runtime Python is missing: $RUNTIME_PYTHON"
+
+mcp_version="$("$RUNTIME_PYTHON" -c 'from importlib.metadata import version; print(version("mcp"))')"
+test "$mcp_version" = "$EXPECTED_MCP_VERSION" \
+  || fail "expected mcp==$EXPECTED_MCP_VERSION, found mcp==$mcp_version"
+
+"$RUNTIME_PYTHON" - <<'PY'
+from mcp.types import AnyUrl
+PY
+
+pass "MCP SDK version and AnyUrl API are compatible"
+
+section "11. Test MCP server startup"
 
 mcp_smoke() {
   local label="$1"
@@ -327,7 +342,7 @@ mcp_smoke() {
   grep -F "$expected_graph" "$stderr_log" >/dev/null \
     || fail "$label MCP did not report the expected graph"
 
-  if grep -E 'Traceback|ModuleNotFoundError|graphify-mcp is not installed' "$stderr_log" >/dev/null; then
+  if grep -E 'Traceback|ImportError|ModuleNotFoundError|graphify-mcp is not installed' "$stderr_log" >/dev/null; then
     fail "$label MCP produced a Python/runtime error"
   fi
 }
@@ -338,13 +353,13 @@ mcp_smoke saved "$REPO_A/graphify-out/graph.json" graphify-mcp-saved
 
 pass "Explicit, automatic, and saved MCP modes start with correct graphs"
 
-section "11. Test Graphify skill command"
+section "12. Test Graphify skill command"
 
 graphify-skill --help >"$LOG_DIR/graphify-skill-help.log" 2>&1
 
 pass "graphify-skill command completed"
 
-section "12. Clean saved global state"
+section "13. Clean saved global state"
 
 graphify-mcp-set-graph --clear
 
