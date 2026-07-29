@@ -16,7 +16,10 @@
         graphify-update = graphify.apps.update;
         graphify-query = graphify.apps.query;
         graphify-mcp = graphify.apps.mcp;
+        graphify-mcp-find-graph = graphify.apps.mcp-find-graph;
+        graphify-mcp-set-graph = graphify.apps.mcp-set-graph;
         graphify-mcp-run = graphify.apps.mcp-run;
+        graphify-mcp-auto = graphify.apps.mcp-auto;
         graphify-test = graphify.apps.test;
         graphify-skill = graphify.apps.skill;
       };
@@ -27,8 +30,12 @@
         graphify-update = graphify.packages.graphify-update;
         graphify-query = graphify.packages.graphify-query;
         graphify-mcp = graphify.packages.graphify-mcp;
+        graphify-mcp-find-graph = graphify.packages.graphify-mcp-find-graph;
+        graphify-mcp-set-graph = graphify.packages.graphify-mcp-set-graph;
         graphify-mcp-run = graphify.packages.graphify-mcp-run;
-        graphify-skill = graphify.packages.skill;
+        graphify-mcp-auto = graphify.packages.graphify-mcp-auto;
+        graphify-test = graphify.packages.graphify-test;
+        graphify-skill = graphify.packages.graphify-skill;
       };
 
       checks.graphify-skill = graphify.checks.skill;
@@ -45,7 +52,10 @@
         inputs.self.packages.${pkgs.system}.graphify-update
         inputs.self.packages.${pkgs.system}.graphify-query
         inputs.self.packages.${pkgs.system}.graphify-mcp
+        inputs.self.packages.${pkgs.system}.graphify-mcp-find-graph
+        inputs.self.packages.${pkgs.system}.graphify-mcp-set-graph
         inputs.self.packages.${pkgs.system}.graphify-mcp-run
+        inputs.self.packages.${pkgs.system}.graphify-mcp-auto
         inputs.self.packages.${pkgs.system}.graphify-skill
       ];
 
