@@ -1,7 +1,6 @@
-# Matthias' Nix Configuration Flake
+# Nix Configuration Flake
 
-A modular, multi-platform Nix flake managing NixOS, Nix-Darwin, and standalone Home Manager configurations using [flake-parts](https://flake.parts) and the [dendritic pattern](https://github.com/mightyiam/dendritic).\
-Check out the [vanilla branch](https://github.com/MatthiasBenaets/nix-config/tree/vanilla) for a more "vanilla" Nix Flake setup.
+A modular, multi-platform Nix flake managing NixOS, Nix-Darwin, and standalone Home Manager configurations using [flake-parts](https://flake.parts) and the [dendritic pattern](https://github.com/mightyiam/dendritic).
 
 ---
 
@@ -59,7 +58,7 @@ The flake uses [flake-parts](https://flake.parts) with [import-tree](https://git
 
 ```bash
 # Clone the repo
-git clone https://github.com/matthiasbenaets/nix-config ~/.setup
+git clone https://github.com/drunkod/nix-config-1 ~/.setup
 cd ~/.setup
 
 # Switch to a host configuration
@@ -88,7 +87,7 @@ First build (darwin-rebuild not yet in PATH):
 
 ```bash
 nix-env -iA nixpkgs.git
-git clone https://github.com/matthiasbenaets/nix-config ~/.setup
+git clone https://github.com/drunkod/nix-config-1 ~/.setup
 cd ~/.setup
 nix build .#darwinConfigurations.<host>.system
 ./result/sw/bin/darwin-rebuild switch --flake ~/.setup#<host>
@@ -120,7 +119,7 @@ Get and rebuild:
 
 ```bash
 nix-env -iA nixpkgs.git
-git clone https://github.com/matthiasbenaets/nix-config ~/.setup
+git clone https://github.com/drunkod/nix-config-1 ~/.setup
 cd ~/.setup
 home-manager switch --extra-experimental-features 'nix-command flakes' --flake ~/.setup#<host>
 ```
@@ -219,7 +218,7 @@ Standalone packages can be run directly without installing them system-wide.
 nix run .#neovim
 
 # Run from anywhere using the flake URL
-nix run github:matthiasbenaets/nix-config#neovim
+nix run github:drunkod/nix-config-1#neovim
 
 # Add temporarily to PATH
 nix shell .#neovim

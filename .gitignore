@@ -2,3 +2,5 @@ result
 ./darwin/result
 **/.direnv
 modules/home/
+.graphify-src/
+graphify-out/

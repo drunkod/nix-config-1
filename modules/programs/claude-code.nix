@@ -69,7 +69,8 @@
         // extraCommands;
 
       claudeFiles =
-        mkExtraProfile ".claude-work" { }
+        mkExtraProfile ".claude-dev" { }
+        // mkExtraProfile ".claude-work" { }
         // mkExtraProfile ".claude-api" {
           model = "qwen3.5:9b";
           env = {
@@ -121,6 +122,7 @@
         ];
 
         shellAliases = {
+          claude-dev = "CLAUDE_CONFIG_DIR=$HOME/.claude-dev claude";
           claude-work = "CLAUDE_CONFIG_DIR=$HOME/.claude-work claude";
           claude-api = "CLAUDE_CONFIG_DIR=$HOME/.claude-api claude";
           # Reference config.sops.secrets here — resolved after module merging

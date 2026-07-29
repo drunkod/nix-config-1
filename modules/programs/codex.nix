@@ -182,6 +182,7 @@
                 trustedProjects = [
                   "Documents/work"
                   "Documents/work/fcast-android-sender"
+                  "Documents/work/omnigent"
                 ];
               in
               {

@@ -1,45 +1,78 @@
-# All Graphify integration in one place.
-#
-# Source of truth: the external `graphify-vhdl-fresh` flake (offline, code-only,
-# no-LLM graphify). This module only re-exposes it into the system config:
-#
-#   • flake apps    graphify-extract / -update / -query / -mcp / -test / -skill
-#   • package       graphify-skill (the Cowork/Desktop Skill zip)
-#   • dev shell     `nix develop .#graphify`
-#   • home-manager  MCP server (auto-discovers graphify-out/graph.json) + zsh aliases
-#
-# To activate on a host, add `graphify` to its home-manager imports.
 { inputs, ... }:
+
 {
-  # ── flake outputs: apps, skill package, dev shell ───────────────────────────
   perSystem =
-    { system, ... }:
+    { pkgs, ... }:
+    let
+      graphify = import ../../nix/graphify.nix {
+        inherit pkgs;
+        graphify-src = inputs.graphify-src;
+      };
+    in
     {
       apps = {
-        graphify-extract = inputs.graphify-vhdl-fresh.apps.${system}.extract;
-        graphify-update = inputs.graphify-vhdl-fresh.apps.${system}.update;
-        graphify-query = inputs.graphify-vhdl-fresh.apps.${system}.query;
-        graphify-mcp = inputs.graphify-vhdl-fresh.apps.${system}.mcp;
-        graphify-test = inputs.graphify-vhdl-fresh.apps.${system}.test;
-        graphify-skill = inputs.graphify-vhdl-fresh.apps.${system}.skill;
+        graphify = graphify.apps.graphify;
+        graphify-extract = graphify.apps.extract;
+        graphify-update = graphify.apps.update;
+        graphify-query = graphify.apps.query;
+        graphify-mcp = graphify.apps.mcp;
+        graphify-mcp-find-graph = graphify.apps.mcp-find-graph;
+        graphify-mcp-set-graph = graphify.apps.mcp-set-graph;
+        graphify-mcp-run = graphify.apps.mcp-run;
+        graphify-mcp-auto = graphify.apps.mcp-auto;
+        graphify-mcp-saved = graphify.apps.mcp-saved;
+        graphify-test = graphify.apps.test;
+        graphify-skill = graphify.apps.skill;
       };
 
-      packages.graphify-skill = inputs.graphify-vhdl-fresh.packages.${system}.default;
+      packages = {
+        graphify = graphify.packages.graphify;
+        graphify-extract = graphify.packages.graphify-extract;
+        graphify-update = graphify.packages.graphify-update;
+        graphify-query = graphify.packages.graphify-query;
+        graphify-mcp = graphify.packages.graphify-mcp;
+        graphify-mcp-find-graph = graphify.packages.graphify-mcp-find-graph;
+        graphify-mcp-set-graph = graphify.packages.graphify-mcp-set-graph;
+        graphify-mcp-run = graphify.packages.graphify-mcp-run;
+        graphify-mcp-auto = graphify.packages.graphify-mcp-auto;
+        graphify-mcp-saved = graphify.packages.graphify-mcp-saved;
+        graphify-test = graphify.packages.graphify-test;
+        graphify-skill = graphify.packages.graphify-skill;
+      };
 
-      devShells.graphify = inputs.graphify-vhdl-fresh.devShells.${system}.default;
+      # graphify.nix stores the pinned version in a shell variable, so the
+      # generated wrapper contains mcp_version="1.26.0" rather than a fully
+      # expanded mcp==1.26.0 argument. Keep the full upstream check while
+      # correcting that generated-script assertion.
+      checks.graphify-skill = graphify.checks.skill.overrideAttrs (old: {
+        buildCommand = builtins.replaceStrings
+          [ "grep -Fq 'mcp==1.26.0'" ]
+          [ "grep -Fq 'mcp_version=\"1.26.0\"'" ]
+          old.buildCommand;
+      });
+
+      devShells.graphify = graphify.devShells.default;
     };
 
-  # ── home-manager: zsh aliases ───────────────────────────────────────────────
   flake.modules.homeManager.graphify =
-    { lib, ... }:
+    { lib, pkgs, ... }:
     {
-      # Aliases resolve the nix-config flake at runtime via graphify_flake_path.
+      home.packages = [
+        inputs.self.packages.${pkgs.system}.graphify
+        inputs.self.packages.${pkgs.system}.graphify-extract
+        inputs.self.packages.${pkgs.system}.graphify-update
+        inputs.self.packages.${pkgs.system}.graphify-query
+        inputs.self.packages.${pkgs.system}.graphify-mcp
+        inputs.self.packages.${pkgs.system}.graphify-mcp-find-graph
+        inputs.self.packages.${pkgs.system}.graphify-mcp-set-graph
+        inputs.self.packages.${pkgs.system}.graphify-mcp-run
+        inputs.self.packages.${pkgs.system}.graphify-mcp-auto
+        inputs.self.packages.${pkgs.system}.graphify-mcp-saved
+        inputs.self.packages.${pkgs.system}.graphify-skill
+      ];
+
       programs.zsh = {
         shellAliases = {
-          graphify-extract = "nix run \"$(graphify_flake_path)\"#graphify-extract -- .";
-          graphify-update = "nix run \"$(graphify_flake_path)\"#graphify-update -- .";
-          graphify-query = "nix run \"$(graphify_flake_path)\"#graphify-query --";
-          graphify-mcp = "nix run \"$(graphify_flake_path)\"#graphify-mcp --";
           graphify-shell = "nix develop \"$(graphify_flake_path)\"#graphify";
         };
 

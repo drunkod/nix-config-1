@@ -26,67 +26,16 @@ let
     config.flake.modules.homeManager.zed
     mcp
     zsh
-    ssh
-    kitty
     graphify
   ];
 
   aiFullImports = aiCoreImports ++ [
-    config.flake.modules.homeManager.repo-harness
     config.flake.modules.homeManager.codex
     config.flake.modules.homeManager."pi-coding-agent"
-    config.flake.modules.homeManager.jules
-    config.flake.modules.homeManager."qoder-cli"
     config.flake.modules.homeManager.proxypilot-t3chat
   ];
-
-  nixMaintenanceM1Mini = {
-    launchd.daemons.nix-gc-local = {
-      command = ''
-        /usr/bin/caffeinate -s /usr/bin/nice -n 20 \
-          /nix/var/nix/profiles/default/bin/nix-collect-garbage --delete-older-than 14d
-      '';
-      serviceConfig = {
-        RunAtLoad = false;
-        StartCalendarInterval = [
-          {
-            Weekday = 7;
-            Hour = 3;
-            Minute = 15;
-          }
-        ];
-        StandardOutPath = "/var/log/nix-gc-local.log";
-        StandardErrorPath = "/var/log/nix-gc-local.err.log";
-        ProcessType = "Background";
-        LowPriorityIO = true;
-      };
-    };
-
-    launchd.daemons.nix-optimise-local = {
-      command = ''
-        /usr/bin/caffeinate -s /usr/bin/nice -n 20 \
-          /nix/var/nix/profiles/default/bin/nix-store --optimise
-      '';
-      serviceConfig = {
-        RunAtLoad = false;
-        StartCalendarInterval = [
-          {
-            Weekday = 7;
-            Hour = 4;
-            Minute = 15;
-          }
-        ];
-        StandardOutPath = "/var/log/nix-optimise-local.log";
-        StandardErrorPath = "/var/log/nix-optimise-local.err.log";
-        ProcessType = "Background";
-        LowPriorityIO = true;
-      };
-    };
-  };
 in
 {
-  flake.modules.darwin.nixMaintenanceM1Mini = nixMaintenanceM1Mini;
-
   flake.darwinConfigurations.m1 = inputs.darwin.lib.darwinSystem {
     system = host.system;
     specialArgs = { inherit inputs; };
@@ -116,7 +65,6 @@ in
       base
       m1-min
 
-      nixMaintenanceM1Mini
       aerospace
       homebrewM1Minimal
       kitty

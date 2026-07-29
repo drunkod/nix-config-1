@@ -14,7 +14,13 @@
         onActivation = {
           autoUpdate = false;
           upgrade = false;
-          cleanup = "zap";
+          # TODO: switch back to `cleanup = "zap"` once nix-darwin emits
+          # `--cleanup --zap` instead of the removed `--force-cleanup` flag.
+          cleanup = "none";
+          extraFlags = [
+            "--cleanup"
+            "--zap"
+          ];
         };
         casks = [
           # "appcleaner"

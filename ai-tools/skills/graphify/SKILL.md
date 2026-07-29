@@ -1,191 +1,259 @@
 ---
 name: graphify
-description: Use when the user wants to map, index, understand, or query a local codebase/folder — building a knowledge graph of files, classes, functions, and their relationships (imports, calls, inherits). Runs fully offline for code-only corpora via tree-sitter. Prefer this over raw Glob/Grep for architecture exploration, "what calls X", "what depends on Y", "trace the path from A to B", or exact graph traversal.
+description: Use when the user wants to map, index, understand, refresh, or query a local codebase or an existing graphify-out knowledge graph. Covers architecture, dependencies, callers, neighbours, paths, exports, and Graphify MCP traversal. Prefer deterministic code-only extraction and always bind MCP/query work to one explicit repository graph.
 ---
 
-# Graphify (local, offline, code graph)
+# Graphify: repository-scoped usage
 
-Build and query a code knowledge graph from a local folder. For code-only corpora,
-Graphify uses deterministic local tree-sitter extraction: no API key, no LLM, and
-nothing leaves the machine. Docs/PDFs/images can trigger semantic model APIs, so
-keep the corpus code-only unless the user explicitly wants semantic extraction.
+Graphify builds a local graph for one repository under
+`<project>/graphify-out/graph.json`. Never treat it as a global cross-project
+database.
 
-This skill is wired to the user's `nix-config` flake integration, not to a
-standalone global `graphify` CLI. Prefer the flake apps below.
+For code-only corpora, extraction is deterministic and local through
+tree-sitter. Documents, PDFs, images, audio, and video can trigger semantic or
+transcription providers, so exclude them unless the user explicitly requests
+that workflow.
 
-## Setup assumptions
+## Non-negotiable safety rule
 
-The user's system configuration exposes flake-backed Graphify commands from
-their `nix-config` checkout. Determine the flake path once per session:
+One query or MCP process must use one identified graph.
 
-1. Prefer a user-provided path if mentioned.
-2. Otherwise check common locations such as `~/nix-config` or `~/.setup`.
-3. If still unclear, ask for the path to the `nix-config` flake.
+Do not select a graph from:
 
-Call that path `<nix-config-flake>`. Use:
+- a different repository;
+- a hard-coded fallback directory;
+- mutable saved global state unless the user explicitly requests saved mode.
 
-- `nix run <nix-config-flake>#graphify-extract -- <project>`
-- `nix run <nix-config-flake>#graphify-update -- <project>`
-- `nix run <nix-config-flake>#graphify-query -- <question> --graph <graph.json>`
-- `nix run <nix-config-flake>#graphify-mcp -- <graph.json>`
-- `nix develop <nix-config-flake>#graphify`
+When project context is unclear, fail rather than silently using another graph.
 
-Interactive shell aliases may exist (`graphify-extract`, `graphify-update`,
-`graphify-query`, `graphify-mcp`, `graphify-shell`), but prefer explicit
-`nix run` / `nix develop` commands.
+## Installed system commands
+
+The user's `m1-min` configuration exposes:
+
+- `graphify-extract <project>` — create a fresh graph;
+- `graphify-update <project>` — incrementally refresh an existing graph;
+- `graphify-query ... --graph <graph.json>` — query an explicit graph;
+- `graphify-mcp-find-graph` — inspect project-scoped automatic selection;
+- `graphify-mcp-auto` — use environment/project/PWD context only;
+- `graphify-mcp-run <project-or-graph>` — use one explicit graph;
+- `graphify-mcp-set-graph` — manage deliberate saved state;
+- `graphify-mcp-saved` — explicitly launch the saved graph;
+- `graphify-mcp` — low-level upstream wrapper.
+
+The same commands are available as flake apps from the user's `nix-config`
+checkout. Common locations are `~/nix-config` and `~/.setup`.
+
+Examples:
+
+```bash
+nix run ~/nix-config#graphify-extract -- /path/to/project
+nix run ~/nix-config#graphify-update -- /path/to/project
+nix run ~/nix-config#graphify-query -- \
+  "what calls RuntimeBridge" \
+  --graph /path/to/project/graphify-out/graph.json
+```
+
+Prefer installed commands when the Home Manager profile is active. Prefer
+explicit flake commands when command availability is uncertain.
 
 ## Core workflow
 
-Use this offline pattern:
+1. Identify the exact project root.
+2. Confirm `.graphifyignore` excludes non-code inputs and generated/vendor trees.
+3. If no graph exists, run `graphify-extract <project>`.
+4. If a graph exists but source changed, run `graphify-update <project>`.
+5. Confirm `graphify-out/graph.json` belongs to the target project.
+6. Query that exact path or start MCP with that exact project/graph.
+7. Use source reads only to verify implementation details after graph traversal.
+
+Do not run `graphify-update` before the first graph exists. Do not delete
+`graph.json` or `manifest.json` before an incremental update.
+
+## Offline code-only policy
+
+A healthy offline extraction reports zero documents, papers, and images.
+
+If non-code categories are detected:
+
+1. tighten `.graphifyignore`;
+2. rerun extraction;
+3. do not add API keys or semantic extras unless explicitly requested.
+
+Typical exclusions include:
+
+```gitignore
+*.md
+*.txt
+*.yaml
+*.yml
+*.pdf
+*.docx
+*.png
+*.jpg
+*.svg
+*.mp4
+
+graphify-out/
+.venv/
+node_modules/
+dist/
+build/
+target/
+docs/
+assets/
+```
+
+## Query policy
+
+Use `graphify-query` for scoped questions with concrete graph terms: file names,
+modules, classes, functions, packages, services, or directories.
+
+Good:
+
+```bash
+graphify-query \
+  "what depends on RuntimeBridge" \
+  --graph "$PROJECT/graphify-out/graph.json"
+```
+
+Avoid treating it as an unconstrained general-purpose prompt engine. For broad
+architecture questions:
+
+1. inspect `GRAPH_REPORT.md` when present;
+2. inspect graph nodes, edges, top-level directories, and communities;
+3. identify concrete entities;
+4. run targeted queries, paths, explains, or MCP traversal;
+5. verify important claims in source.
+
+## MCP policy
+
+### Automatic project mode
+
+`graphify-mcp-auto` resolves only:
+
+1. valid `GRAPHIFY_GRAPH_PATH`;
+2. valid `GRAPHIFY_PROJECT_ROOT`;
+3. `graphify-out/graph.json` found upward from the process working directory.
+
+It never reads saved global state and never uses unrelated fallback
+repositories.
+
+Before automatic startup, inspect selection with:
+
+```bash
+graphify-mcp-find-graph
+```
+
+An invalid explicit environment path must fail immediately. Do not fall back.
+
+### Explicit mode — preferred
+
+For GUI programmes, Claude project configuration, CI, containers, and
+sandboxes, use:
+
+```bash
+graphify-mcp-run /absolute/project/graphify-out/graph.json
+```
+
+This is the preferred MCP mode because the graph identity is visible in the
+configuration.
+
+### Saved mode — only by explicit request
+
+Only use this workflow when the user deliberately wants a single global graph:
+
+```bash
+graphify-mcp-set-graph /absolute/project
+graphify-mcp-set-graph --show
+graphify-mcp-saved
+graphify-mcp-set-graph --clear
+```
+
+Never use `graphify-mcp-set-graph` as an automatic project-switching mechanism.
+
+### Structured traversal
+
+Use MCP/direct graph tools for exact relationships, including:
+
+- `query_graph`;
+- `get_node`;
+- `get_neighbors`;
+- `shortest_path`.
+
+Prefer these for exact calls, dependencies, neighbours, and path questions.
+
+## Claude Code sandbox without Nix
+
+The repository provides:
 
 ```text
-offline extract/update
-→ graph.json / GRAPH_REPORT.md
-→ scoped keyword/entity query
-→ MCP/direct graph traversal for exact edges
-→ raw source read only for verification
+scripts/graphify-sandbox.sh
 ```
 
-1. Confirm the target project folder and work from its root.
-2. Build or refresh the code-only graph:
-   - First build: `nix run <nix-config-flake>#graphify-extract -- .`
-   - After edits: `nix run <nix-config-flake>#graphify-update -- .`
-3. Verify the run stayed offline/code-only. Healthy output has `0 docs, 0 papers, 0 images`.
-   If not, fix `.graphifyignore`; do not add an LLM/API key unless requested.
-4. Use outputs in `<target>/graphify-out/`:
-   - `graph.json` — full graph; source of truth for exact traversal
-   - `manifest.json` — file inventory
-   - `GRAPH_REPORT.md` — architecture highlights, if generated
-   - `graph.html` / callflow HTML — visual exploration, if exported
-5. Consult the graph before raw `Glob`/`Grep`/file reads. Use raw source only to
-   verify or inspect implementation details after graph exploration.
-
-## Query policy: keyword/entity mode
-
-`graphify-query` is allowed and preferred for scoped graph questions. Do not use
-it as a broad LLM-like prompt engine.
-
-Use `graphify-query` only after identifying concrete graph terms, such as file
-names, class names, function names, package names, crate names, directories, or
-concepts already present in `graphify-out/graph.json` or `GRAPH_REPORT.md`.
-
-Good examples:
+Use it through Bash:
 
 ```bash
-nix run <nix-config-flake>#graphify-query -- \
+bash /workspace/nix-config/scripts/graphify-sandbox.sh extract /workspace/project
+bash /workspace/nix-config/scripts/graphify-sandbox.sh update /workspace/project
+bash /workspace/nix-config/scripts/graphify-sandbox.sh query \
   "what calls RuntimeBridge" \
-  --graph ./graphify-out/graph.json
-
-nix run <nix-config-flake>#graphify-query -- \
-  "MainActivity AppGraph RuntimeBridge ScreenCaptureCoordinator" \
-  --graph ./graphify-out/graph.json
-
-nix run <nix-config-flake>#graphify-query -- \
-  "what connects MainActivity to nativeProcessFrame" \
-  --graph ./graphify-out/graph.json
+  --graph /workspace/project/graphify-out/graph.json
+bash /workspace/nix-config/scripts/graphify-sandbox.sh mcp \
+  /workspace/project/graphify-out/graph.json
 ```
 
-Avoid broad prompt-like queries:
+The launcher requires `uv`; it uses the Graphify revision pinned by this
+repository. For an offline sandbox, mount a source checkout and set:
 
 ```bash
-nix run <nix-config-flake>#graphify-query -- \
-  "Summarize the whole architecture and create Mermaid" \
-  --graph ./graphify-out/graph.json
+export GRAPHIFY_SOURCE_DIR=/workspace/vendor/graphify
 ```
 
-## Broad architecture workflow
-
-For broad architecture questions, do not start with a broad natural-language
-`graphify-query`. Instead:
-
-1. Read `graphify-out/GRAPH_REPORT.md` if present.
-2. Inspect `graphify-out/graph.json` locally for top modules/directories,
-   communities, high-degree nodes, and representative labels.
-3. Run targeted `graphify-query`, `path`, `explain`, or MCP traversal on
-   discovered concrete names.
-4. Generate the final architecture summary or Mermaid diagram from those graph
-   results, then verify important claims against source files.
-
-A quick local graph inspection snippet:
-
-```bash
-python3 - <<'PY'
-import json
-from collections import Counter
-
-g = json.load(open("graphify-out/graph.json"))
-edges = g.get("edges") or g.get("links") or []
-print("nodes", len(g.get("nodes", [])))
-print("edges", len(edges))
-
-roots = Counter()
-labels = []
-for n in g.get("nodes", []):
-    src = n.get("source_file") or ""
-    label = n.get("label") or n.get("id") or ""
-    if src:
-        roots[src.split("/")[0]] += 1
-    if label:
-        labels.append(label)
-
-print("\nTop roots:")
-for k, v in roots.most_common(20):
-    print(v, k)
-
-print("\nSample labels:")
-for x in labels[:80]:
-    print(x)
-PY
-```
-
-## MCP and exact traversal
-
-The user's configuration already defines a `graphify` MCP server. It will:
-
-- use `GRAPHIFY_GRAPH_PATH` if set, or
-- search upward from the current directory for `graphify-out/graph.json`.
-
-Use MCP/direct traversal when exact edges matter. Prefer structured graph tools
-such as `query_graph`, `get_node`, `get_neighbors`, and `shortest_path` over
-natural-language query for precise dependency/call/path questions.
+Never copy the Mac's saved MCP state into a sandbox. Configure the sandbox MCP
+server with an explicit graph path.
 
 ## Reports and diagrams
 
-If `GRAPH_REPORT.md` is absent and a human-readable architecture view is needed,
-prefer an offline report/export path. If the flake exposes a wrapper, use it; if
-working inside the Graphify dev shell, use Graphify's CLI directly, for example:
+If `GRAPH_REPORT.md` is absent and a readable architecture view is required,
+use an offline report/export path supported by the installed CLI. Verify
+version-sensitive commands with `graphify --help` first.
+
+Inside the Graphify development shell, examples may include:
 
 ```bash
 graphify cluster-only . --no-label
 graphify export callflow-html --output docs/architecture-callflow.html
 ```
 
-`--no-label` avoids LLM community naming. `callflow-html` is the preferred route
-for readable architecture/call-flow Mermaid diagrams when available.
+`--no-label` avoids model-based community naming where supported.
 
 ## Keeping graphs fresh
 
-After code edits, refresh with:
+After edits:
 
 ```bash
-nix run <nix-config-flake>#graphify-update -- .
+graphify-update /path/to/project
 ```
 
-For team workflows, it is usually reasonable to commit stable graph artifacts:
+Restart the MCP process after changing the graph. A running server keeps the
+graph it received at startup.
 
-- `graphify-out/graph.json`
-- `graphify-out/manifest.json`
-- `graphify-out/GRAPH_REPORT.md`
-- `graphify-out/graph.html` or callflow HTML, if useful
+For Git worktrees, keep a separate `graphify-out/` under each worktree. Do not
+share one mutable graph between branches with substantially different source.
 
-Usually ignore local/transient artifacts such as:
+## Reference sidecars
 
-- `graphify-out/cost.json`
-- `graphify-out/cache/`
+Load only the sidecar needed for the task. Treat commands as version-sensitive
+upstream references and verify support with the installed CLI.
 
-## Notes
+- `references/query.md` — query, path, and explain behaviour;
+- `references/update.md` — incremental refresh details;
+- `references/exports.md` — export and database flows;
+- `references/github-and-merge.md` — cloning and multi-repository merge flows;
+- `references/add-watch.md` — URL ingestion and watch mode;
+- `references/transcribe.md` — audio/video transcription;
+- `references/extraction-spec.md` — graph output/schema expectations;
+- `references/hooks.md` — agent hook behaviour.
 
-- Code-only extraction is local and deterministic; no tokens spent, nothing leaves the machine.
-- Non-code files (docs/PDFs/images) may trigger semantic extraction through model APIs.
-- Keep `.graphifyignore` strict enough to preserve `0 docs, 0 papers, 0 images` for offline privacy.
-- Do not tell the user to run `pip install graphify`; this integrated setup uses the user's flake apps.
+When a sidecar conflicts with this skill's repository-scoping or MCP-selection
+rules, follow this skill.
