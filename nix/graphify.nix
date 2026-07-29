@@ -219,13 +219,15 @@ let
     ${graphifyResolveCandidate}
     ${graphifyFindProjectGraph}
 
-    if graphify_find_project_graph; then
+    status=0
+    graphify_find_project_graph || status=$?
+
+    if [ "$status" -eq 0 ]; then
       echo "graphify MCP: selected graph via $graph_source: $graph" >&2
       printf '%s\n' "$graph"
       exit 0
     fi
 
-    status=$?
     if [ "$status" -eq 1 ]; then
       echo "graphify MCP: no project graph found. Set GRAPHIFY_GRAPH_PATH, set GRAPHIFY_PROJECT_ROOT, or start the client inside a project containing graphify-out/graph.json" >&2
     fi
@@ -245,11 +247,12 @@ let
         exit 0
         ;;
       --show)
-        if graphify_find_saved_graph; then
+        status=0
+        graphify_find_saved_graph || status=$?
+        if [ "$status" -eq 0 ]; then
           printf '%s\n' "$graph"
-          exit 0
         fi
-        exit $?
+        exit "$status"
         ;;
       --help|-h)
         cat <<'EOF'
@@ -323,11 +326,13 @@ EOF
     ${graphifyResolveCandidate}
     ${graphifyFindSavedGraph}
 
-    if graphify_find_saved_graph; then
+    status=0
+    graphify_find_saved_graph || status=$?
+    if [ "$status" -eq 0 ]; then
       echo "graphify MCP: selected graph via $graph_source: $graph" >&2
       exec ${graphifyMcpWrapper}/bin/graphify-mcp "$graph" "$@"
     fi
-    exit $?
+    exit "$status"
   '';
 
   graphifyTestWrapper = mkGraphifyBin "graphify-test" ''
@@ -456,6 +461,10 @@ in
 
     ${graphifyMcpSetGraphWrapper}/bin/graphify-mcp-set-graph --clear
     test ! -e "$XDG_STATE_HOME/graphify/mcp-graph-path"
+    if ${graphifyMcpSetGraphWrapper}/bin/graphify-mcp-set-graph --show >/dev/null 2>&1; then
+      echo "showing a cleared saved graph must fail" >&2
+      exit 1
+    fi
 
     mkdir -p "$out"
   '';
