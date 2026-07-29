@@ -52,7 +52,8 @@ prepare_source() {
   if [ -n "${GRAPHIFY_SOURCE_DIR:-}" ]; then
     [ -d "$GRAPHIFY_SOURCE_DIR" ] || fail "GRAPHIFY_SOURCE_DIR does not exist: $GRAPHIFY_SOURCE_DIR"
     source_dir="$(cd "$GRAPHIFY_SOURCE_DIR" && pwd -P)"
-    wanted_source_id="path:$source_dir"
+    [ -f "$source_dir/pyproject.toml" ] || fail "GRAPHIFY_SOURCE_DIR does not contain pyproject.toml: $source_dir"
+    wanted_source_id="path:$source_dir@${GRAPHIFY_SOURCE_ID:-mounted}"
   else
     require_command git
     source_dir="$source_cache"
@@ -62,13 +63,14 @@ prepare_source() {
       IFS= read -r installed_source_id < "$source_marker" || true
     fi
 
-    if [ "$installed_source_id" != "$wanted_source_id" ] || [ ! -f "$source_dir/pyproject.toml" ]; then
+    if [ "$installed_source_id" != "$wanted_source_id" ] || [ ! -d "$source_dir/.git" ] || [ ! -f "$source_dir/pyproject.toml" ]; then
       rm -rf "$source_dir"
       mkdir -p "$source_dir"
       git -C "$source_dir" init --quiet
       git -C "$source_dir" remote add origin "$repository"
       git -C "$source_dir" fetch --quiet --depth 1 origin "$revision"
       git -C "$source_dir" checkout --quiet --detach FETCH_HEAD
+      [ -f "$source_dir/pyproject.toml" ] || fail "fetched Graphify source does not contain pyproject.toml"
       printf '%s\n' "$wanted_source_id" > "$source_marker"
     fi
   fi
@@ -129,6 +131,7 @@ Usage:
 
 Environment:
   GRAPHIFY_SOURCE_DIR          Mounted/local Graphify source checkout
+  GRAPHIFY_SOURCE_ID           Version token for a mounted source checkout
   GRAPHIFY_SOURCE_REPOSITORY   Source Git repository
   GRAPHIFY_SOURCE_REV          Pinned Git revision or tag
   GRAPHIFY_SANDBOX_STATE_DIR   Runtime/cache directory
