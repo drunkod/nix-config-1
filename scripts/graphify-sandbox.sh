@@ -11,6 +11,7 @@ set -euo pipefail
 readonly default_repository="https://github.com/safishamsi/graphify.git"
 readonly default_revision="75922443866244d4bb6a266b8e085aa82b10dbe7"
 readonly default_extras="mcp,watch,svg,sql,terraform"
+readonly default_mcp_version="1.26.0"
 
 runtime_dir="${GRAPHIFY_SANDBOX_STATE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/graphify-sandbox}"
 venv_dir="$runtime_dir/.venv"
@@ -20,6 +21,7 @@ install_marker="$runtime_dir/install-id"
 repository="${GRAPHIFY_SOURCE_REPOSITORY:-$default_repository}"
 revision="${GRAPHIFY_SOURCE_REV:-$default_revision}"
 extras="${GRAPHIFY_UV_EXTRAS-$default_extras}"
+mcp_version="$default_mcp_version"
 
 fail() {
   echo "graphify-sandbox: $*" >&2
@@ -83,12 +85,19 @@ prepare_runtime() {
   local installed_id=""
   local install_spec=""
   local needs_install=0
+  local wants_mcp=0
 
   require_command uv
   mkdir -p "$runtime_dir"
   prepare_source
 
-  install_id="$source_id|$extras"
+  case ",$extras," in
+    *,mcp,*|*,all,*)
+      wants_mcp=1
+      ;;
+  esac
+
+  install_id="$source_id|$extras|mcp==$mcp_version"
   if [ -f "$install_marker" ]; then
     IFS= read -r installed_id < "$install_marker" || true
   fi
@@ -97,13 +106,20 @@ prepare_runtime() {
     needs_install=1
   fi
 
-  case ",$extras," in
-    *,mcp,*)
-      if [ ! -x "$venv_dir/bin/graphify-mcp" ]; then
-        needs_install=1
-      fi
-      ;;
-  esac
+  if [ "$wants_mcp" -eq 1 ]; then
+    if [ ! -x "$venv_dir/bin/graphify-mcp" ] || [ ! -x "$venv_dir/bin/python" ]; then
+      needs_install=1
+    elif ! "$venv_dir/bin/python" - "$mcp_version" <<'PY'
+import sys
+from importlib.metadata import version
+from mcp.types import AnyUrl
+
+raise SystemExit(0 if version("mcp") == sys.argv[1] else 1)
+PY
+    then
+      needs_install=1
+    fi
+  fi
 
   if [ "$needs_install" -eq 1 ]; then
     rm -rf "$venv_dir"
@@ -115,7 +131,15 @@ prepare_runtime() {
     fi
 
     echo "graphify-sandbox: installing pinned Graphify runtime" >&2
-    uv pip install --python "$venv_dir/bin/python" "$install_spec" --quiet
+    if [ "$wants_mcp" -eq 1 ]; then
+      uv pip install \
+        --python "$venv_dir/bin/python" \
+        "$install_spec" \
+        "mcp==$mcp_version" \
+        --quiet
+    else
+      uv pip install --python "$venv_dir/bin/python" "$install_spec" --quiet
+    fi
     printf '%s\n' "$install_id" > "$install_marker"
   fi
 }
@@ -136,6 +160,9 @@ Environment:
   GRAPHIFY_SOURCE_REV          Pinned Git revision or tag
   GRAPHIFY_SANDBOX_STATE_DIR   Runtime/cache directory
   GRAPHIFY_UV_EXTRAS           Python extras; defaults to code/MCP essentials
+
+The current Graphify revision requires the MCP Python SDK v1 API, so sandbox
+runtimes pin mcp==1.26.0 and verify mcp.types.AnyUrl before reuse.
 EOF
 }
 
