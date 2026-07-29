@@ -466,7 +466,7 @@ in
       exit 1
     fi
 
-    grep -Fq 'mcp==${defaultMcpVersion}' ${graphifyMcpWrapper}/bin/graphify-mcp
+    grep -Fq 'mcp_version="${defaultMcpVersion}"' ${graphifyMcpWrapper}/bin/graphify-mcp
     grep -Fq 'from mcp.types import AnyUrl' ${graphifyMcpWrapper}/bin/graphify-mcp
 
     export HOME="$TMPDIR/home"
