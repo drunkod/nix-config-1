@@ -104,10 +104,10 @@ let
 
   graphifyFindGraph = ''
     graphify_find_graph() {
-      local candidate
-      local dir
-      local fallbacks
-      local -a fallback_candidates
+      local candidate=""
+      local dir=""
+      local fallbacks=""
+      local -a fallback_candidates=()
 
       graph=""
 
@@ -215,7 +215,8 @@ let
           exit 1
         fi
 
-        IFS= read -r candidate < "$state_file"
+        candidate=""
+        IFS= read -r candidate < "$state_file" || true
         graph=""
         if ! graphify_resolve_candidate "$candidate"; then
           echo "graphify MCP: saved graph no longer exists: $candidate" >&2
@@ -250,7 +251,8 @@ let
     printf '%s\n' "$graph"
   '';
 
-  graphifyMcpRunWrapper = mkGraphifyBin "graphify-mcp-run" ''
+  graphifyMcpRunWrapper = pkgs.writeShellScriptBin "graphify-mcp-run" ''
+    set -euo pipefail
     ${graphifyResolveCandidate}
 
     candidate="''${1:-graphify-out/graph.json}"
@@ -265,13 +267,14 @@ let
       exit 1
     fi
 
-    exec "$VIRTUAL_ENV/bin/graphify-mcp" "$graph" "$@"
+    exec ${graphifyMcpWrapper}/bin/graphify-mcp "$graph" "$@"
   '';
 
-  graphifyMcpAutoWrapper = mkGraphifyBin "graphify-mcp-auto" ''
+  graphifyMcpAutoWrapper = pkgs.writeShellScriptBin "graphify-mcp-auto" ''
+    set -euo pipefail
     graph="$(${graphifyMcpFindGraphWrapper}/bin/graphify-mcp-find-graph)"
     echo "graphify MCP: using graph $graph" >&2
-    exec "$VIRTUAL_ENV/bin/graphify-mcp" "$graph" "$@"
+    exec ${graphifyMcpWrapper}/bin/graphify-mcp "$graph" "$@"
   '';
 
   graphifyTestWrapper = mkGraphifyBin "graphify-test" ''
