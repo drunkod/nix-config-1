@@ -34,13 +34,19 @@
       ];
 
       home.packages = [
+        graphifyPackages.graphify-mcp-find-graph
         graphifyPackages.graphify-mcp-set-graph
+        graphifyPackages.graphify-mcp-run
+        graphifyPackages.graphify-mcp-saved
       ];
 
       programs.mcp = {
         enable = lib.mkDefault true;
         servers = {
           graphify = {
+            # Fail closed: automatic startup uses only an explicit environment
+            # path/project root or the launching program's current workspace.
+            # Saved state is available only through graphify-mcp-saved.
             command = lib.getExe graphifyPackages.graphify-mcp-auto;
           };
 
