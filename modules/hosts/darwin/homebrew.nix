@@ -112,6 +112,12 @@
 
   flake.modules.darwin.homebrewM1Minimal = {
     homebrew = {
+      taps = [
+        "steipete/tap"
+      ];
+      brews = [
+        "steipete/tap/oracle"
+      ];
       casks = [
         "firefox"
         # "raycast"
