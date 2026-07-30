@@ -16,6 +16,33 @@
         jq
       ];
 
+      # Keep the mutable Bun installation explicit, but provide a stable command
+      # after Home Manager activation. This avoids routing an expected first-run
+      # state through the shell's command-not-found handler.
+      repoHarnessLauncher = pkgs.writeShellApplication {
+        name = "repo-harness";
+        text = ''
+          set -euo pipefail
+
+          export BUN_INSTALL="''${BUN_INSTALL:-$HOME/.bun}"
+          cli="$BUN_INSTALL/bin/repo-harness"
+
+          if [ ! -x "$cli" ]; then
+            printf '%s\n' \
+              "repo-harness CLI is not installed yet." \
+              "" \
+              "Run:" \
+              "  rh-bootstrap" \
+              "" \
+              "Then verify:" \
+              "  repo-harness --version" >&2
+            exit 127
+          fi
+
+          exec "$cli" "$@"
+        '';
+      };
+
       repoHarnessBootstrap = pkgs.writeShellApplication {
         name = "repo-harness-bootstrap";
         runtimeInputs = repoHarnessRuntimeInputs;
@@ -31,17 +58,17 @@
 
           echo
           echo "repo-harness CLI:"
-          repo-harness --version || true
+          "$BUN_INSTALL/bin/repo-harness" --version
 
           echo
           echo "Host config was not changed. To inspect generated host adapters safely, run:"
-          echo "  repo-harness-generate-host-config"
+          echo "  rh-generate-host-config"
 
           echo
           echo "Next steps inside a target repository:"
-          echo "  repo-harness-adopt-current"
+          echo "  rh-adopt"
           echo "  repo-harness adopt"
-          echo "  bash scripts/check-task-workflow.sh --strict"
+          echo "  repo-harness run check-task-workflow --strict"
         '';
       };
 
@@ -74,7 +101,7 @@
           echo
 
           bun add -g repo-harness
-          repo-harness install
+          "$BUN_INSTALL/bin/repo-harness" install
 
           echo
           echo "Generated files:"
@@ -107,15 +134,15 @@
           set -euo pipefail
 
           export BUN_INSTALL="''${BUN_INSTALL:-$HOME/.bun}"
-          export PATH="$BUN_INSTALL/bin:$PATH"
+          cli="$BUN_INSTALL/bin/repo-harness"
 
-          if ! command -v repo-harness >/dev/null 2>&1; then
-            echo "repo-harness is not installed. Run repo-harness-bootstrap first." >&2
+          if [ ! -x "$cli" ]; then
+            echo "repo-harness CLI is not installed. Run rh-bootstrap first." >&2
             exit 127
           fi
 
           echo "Previewing repo-harness adoption for: $PWD"
-          repo-harness adopt --dry-run
+          "$cli" adopt --dry-run
 
           echo
           echo "If the dry run looks correct, apply it with:"
@@ -130,14 +157,14 @@
           set -euo pipefail
 
           export BUN_INSTALL="''${BUN_INSTALL:-$HOME/.bun}"
-          export PATH="$BUN_INSTALL/bin:$PATH"
+          cli="$BUN_INSTALL/bin/repo-harness"
 
-          if ! command -v repo-harness >/dev/null 2>&1; then
-            echo "repo-harness is not installed. Run repo-harness-bootstrap first." >&2
+          if [ ! -x "$cli" ]; then
+            echo "repo-harness CLI is not installed. Run rh-bootstrap first." >&2
             exit 127
           fi
 
-          repo-harness setup check --json
+          exec "$cli" setup check --json
         '';
       };
     in
@@ -146,6 +173,7 @@
         packages = [
           pkgs.bun
           pkgs.jq
+          repoHarnessLauncher
           repoHarnessBootstrap
           repoHarnessGenerateHostConfig
           repoHarnessAdoptCurrent
