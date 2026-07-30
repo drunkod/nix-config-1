@@ -104,6 +104,8 @@ Port only deliberately selected settings, hooks, agents, or skills into the Nix 
 
 ## ChatGPT Browser Plan, Create, Review
 
+For the full setup walkthrough, Chrome binding, Browser Engine smoke test, GitHub-app Create stage, and independent Review stage, see [`docs/repo-harness-chatgpt-browser-setup.md`](docs/repo-harness-chatgpt-browser-setup.md).
+
 The minimal workflow separates durable repo-harness artifacts from GitHub actions:
 
 ```text
