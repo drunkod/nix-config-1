@@ -25,13 +25,26 @@ let
         "skill-creator"
       ];
     };
+
+    qoderCli = {
+      include = [
+        "git-toolkit"
+        "graphify"
+        "memory-profiler"
+        "nix-toolkit"
+        "security-toolkit"
+        "writing-nix"
+      ];
+    };
   };
 
   skillsForHarness =
     harnessName:
     let
-      exclude = (harnessSkillFilters.${harnessName} or { }).exclude or [ ];
-      shouldKeep = name: !(lib.elem name exclude);
+      filter = harnessSkillFilters.${harnessName} or { };
+      include = filter.include or null;
+      exclude = filter.exclude or [ ];
+      shouldKeep = name: (include == null || lib.elem name include) && !(lib.elem name exclude);
 
       shouldKeepPath =
         path:
@@ -41,7 +54,7 @@ let
         in
         topLevel == "" || shouldKeep topLevel;
     in
-    if exclude == [ ] then
+    if include == null && exclude == [ ] then
       skillsDir
     else
       builtins.filterSource (path: _: shouldKeepPath path) skillsDir;
@@ -50,8 +63,10 @@ let
     harnessName:
     let
       harnessSkills = skillsForHarness harnessName;
-      exclude = (harnessSkillFilters.${harnessName} or { }).exclude or [ ];
-      shouldKeep = name: !(lib.elem name exclude);
+      filter = harnessSkillFilters.${harnessName} or { };
+      include = filter.include or null;
+      exclude = filter.exclude or [ ];
+      shouldKeep = name: (include == null || lib.elem name include) && !(lib.elem name exclude);
     in
     lib.mapAttrs (name: _: harnessSkills + "/${name}") (lib.filterAttrs (name: _: shouldKeep name) allSkills);
 in
@@ -98,6 +113,10 @@ in
 
   piCodingAgent = {
     skills = skillsForHarness "piCodingAgent";
+  };
+
+  qoderCli = {
+    skills = skillsAttrsForHarness "qoderCli";
   };
 
   mergeCommands = existingCommands: newCommands: existingCommands // newCommands;
