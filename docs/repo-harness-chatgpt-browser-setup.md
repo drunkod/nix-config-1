@@ -7,22 +7,22 @@ It configures the smallest useful workflow:
 ```text
 ChatGPT Browser Plan
         ↓
-approved repository plan and task contract
+approved bounded change brief
         ↓
 ChatGPT GitHub app Create
         ↓
 branch, commit, and draft pull request
         ↓
-new ChatGPT Browser Review session
+new ChatGPT Review conversation
         ↓
 human decision
 ```
 
-The Browser Engine is the repo-harness planning and review transport. GitHub-app writes are a separate ChatGPT capability available in the connected environment; they are not an upstream repo-harness file-writing feature.
+The repo-harness Browser Engine is the planning transport and local audit store. GitHub-app reads and writes are a separate ChatGPT capability available in the connected environment; they are not an upstream repo-harness file-writing feature.
 
 ## 1. Confirm the repository is adopted
 
-Run these commands from the adopted repository or test worktree:
+Run from the adopted repository or test worktree:
 
 ```bash
 cd /path/to/repository
@@ -33,16 +33,18 @@ repo-harness run check-task-workflow --strict
 git status --short
 ```
 
-A newly adopted repository may report:
+A new adoption may report:
 
 - `phase: idle`;
 - `workflow_profile: lite`;
 - no active plan or contract;
 - generated repository files and `.gitignore` additions.
 
-That is a valid starting state. The optional global Claude/Codex adapters, CodeGraph integration, external skills, and agent fleet are not required for this browser-only workflow.
+That is a valid starting state. For a low-risk documentation smoke test, respect the `lite` guidance: use a bounded brief, one approved file, and a targeted check. Do not create a heavyweight plan or task contract merely to satisfy ceremony.
 
-Before continuing, inspect every generated file:
+Optional global Claude/Codex adapters, CodeGraph, external skills, and the agent fleet are not required for this browser-only workflow.
+
+Inspect the generated files before committing adoption:
 
 ```bash
 git diff --stat
@@ -51,11 +53,11 @@ find .claude deploy docs/architecture docs/reference-configs docs/researches \
   -type f -maxdepth 4 -print 2>/dev/null
 ```
 
-Do not commit generated content blindly. Keep the adoption experiment on a separate branch or worktree until the generated repository contract is understood.
+Keep the adoption experiment on a separate branch or worktree until the generated repository contract is understood.
 
 ## 2. Check Browser Engine readiness
 
-The supported provider is Oracle. Run:
+Oracle is the supported provider:
 
 ```bash
 repo-harness chatgpt browser-doctor \
@@ -64,19 +66,26 @@ repo-harness chatgpt browser-doctor \
   --json
 ```
 
-Continue only when the result reports:
+Continue only when the top-level result reports:
 
 ```json
 {
-  "status": "ready"
+  "status": "ready",
+  "provider": "oracle"
 }
 ```
 
-When the doctor reports a missing or incompatible Oracle or Node runtime, follow the returned `agent_actions`. Do not silently fall back to the deprecated native browser provider.
+When `status` is `ready`, an entry such as this under `native.productSession` does not block Oracle:
 
-## 3. Identify the signed-in Chrome profile
+```text
+blocked_default_profile
+```
 
-Close Chrome before copying or inspecting profile data.
+That warning applies to the deprecated native Chrome CDP provider. Chrome 136+ blocks native CDP validation against the current default Chrome data directory. Oracle may still use the selected signed-in profile through its cookie-path support.
+
+When the doctor reports a missing or incompatible Oracle or Node runtime, follow its returned `agent_actions`. Do not silently switch to the native provider.
+
+## 3. Bind the signed-in Chrome profile
 
 Typical macOS profile locations are:
 
@@ -96,17 +105,13 @@ find "$HOME/Library/Application Support/Google/Chrome" \
   -print
 ```
 
-Choose the profile that is already signed in to ChatGPT:
+Choose the profile signed in to ChatGPT:
 
 ```bash
-export CHROME_PROFILE="$HOME/Library/Application Support/Google/Chrome/Profile 1"
+export CHROME_PROFILE="$HOME/Library/Application Support/Google/Chrome/Default"
 ```
 
-Do not commit the profile path, browser cookies, tokens, or copied browser data.
-
-## 4. Bind the Browser Engine to Chrome
-
-Run:
+Bind it:
 
 ```bash
 repo-harness chatgpt browser-setup \
@@ -115,7 +120,7 @@ repo-harness chatgpt browser-setup \
   --browser-channel chrome
 ```
 
-Validate the binding:
+Validate again:
 
 ```bash
 repo-harness chatgpt browser-doctor \
@@ -124,13 +129,93 @@ repo-harness chatgpt browser-doctor \
   --json
 ```
 
-If the doctor reports `ORACLE_PROFILE_COOKIE_NOT_FOUND`, the selected profile is not the signed-in profile. Select another profile and repeat `browser-setup`.
+The binding is local runtime state. Keep these paths ignored:
 
-The repository-local browser binding is private runtime state and should remain ignored by Git.
+```text
+.repo-harness/chatgpt-browser.local.json
+.repo-harness/chatgpt-browser.tokens.json
+.ai/harness/chatgpt/browser-lock.json
+.ai/harness/chatgpt/sessions/
+```
 
-## 5. Run a harmless planning dry run
+Do not copy or commit browser cookies, profile contents, tokens, or passwords.
 
-Use a documentation-only task for the first test:
+## 4. Understand the Browser Engine file policy
+
+The Browser Engine accepts explicit repository files only from its allowed surface.
+
+Allowed by default:
+
+```text
+AGENTS.md
+CLAUDE.md
+README.md
+docs/**
+plans/**
+tasks/**
+.ai/context/**
+.ai/harness/**
+package.json
+```
+
+Denied by default include secrets, private keys, `.git/**`, `.ssh/**`, build output, `_ops/**`, and `.repo-harness/**/*.json`.
+
+An arbitrary root-level Markdown file is not automatically allowed. For example:
+
+```text
+REPO-HARNESS.md
+```
+
+is rejected with:
+
+```text
+path is not allowed for read
+```
+
+Do not bypass the policy by copying arbitrary files blindly. Prefer an allowed canonical input such as `README.md`, `AGENTS.md`, or a reviewed file under `docs/`.
+
+## 5. Run the transport smoke test
+
+First validate session creation without attachments:
+
+```bash
+repo-harness chatgpt browser-consult \
+  --repo . \
+  --provider oracle \
+  --dry-run \
+  --prompt "Reply exactly OK"
+```
+
+List sessions:
+
+```bash
+repo-harness chatgpt browser-list --repo .
+```
+
+Inspect the dry-run session:
+
+```bash
+repo-harness chatgpt browser-session \
+  --repo . \
+  <session-id>
+```
+
+Confirm that it is marked `dry_run` and that no real browser conversation was opened.
+
+Then run the real transport check:
+
+```bash
+repo-harness chatgpt browser-consult \
+  --repo . \
+  --provider oracle \
+  --prompt "Reply exactly OK"
+```
+
+Expected result: a completed Oracle session whose managed output contains `OK`.
+
+## 6. Run the first planning dry run
+
+Use only allowed files that already exist in the adopted worktree:
 
 ```bash
 mkdir -p .ai/harness/handoff/gptpro
@@ -143,97 +228,72 @@ repo-harness chatgpt browser-consult \
   --prompt "
 Act as the planner.
 
-Plan a documentation-only change that adds a short Browser Engine
-verification section to this repository.
+Prepare a bounded documentation change brief for adding a short
+Browser Engine verification note to docs/spec.md.
 
 Return:
 - goal;
-- allowed files;
+- exact allowed file;
 - forbidden files;
-- proposed content;
+- exact proposed content;
 - acceptance criteria;
 - verification steps;
 - rollback.
 
+Use only docs/spec.md as the proposed implementation target.
 Do not implement the change.
 Do not modify GitHub.
 Do not claim that commands were run.
 " \
   --file AGENTS.md \
-  --file REPO-HARNESS.md \
-  --file docs/repo-harness-chatgpt-browser-setup.md \
+  --file README.md \
+  --file docs/spec.md \
   --write-output \
-  ".ai/harness/handoff/gptpro/plan-${stamp}-browser-smoke-test.md"
+  ".ai/harness/handoff/gptpro/brief-${stamp}-browser-smoke-test.md"
 ```
 
-The dry run renders the prompt and attachment bundle without starting the real provider session.
+The dry run validates:
 
-Inspect available sessions:
+- the prompt;
+- the file policy;
+- attachment sizes;
+- the unique output path;
+- local session creation.
+
+Inspect the saved session:
 
 ```bash
 repo-harness chatgpt browser-list --repo .
+repo-harness chatgpt browser-session --repo . <session-id>
 ```
 
-Inspect the selected session:
+Verify that only these inputs are present:
 
-```bash
-repo-harness chatgpt browser-session \
-  --repo . \
-  <session-id>
+```text
+AGENTS.md
+README.md
+docs/spec.md
 ```
 
-Verify:
+## 7. Run the real planning session
 
-- only intended files are attached;
-- no secrets or unrelated source trees are included;
-- the output path is unique and timestamped;
-- the prompt asks for planning rather than implementation.
-
-## 6. Run the real planning session
-
-Repeat the previous `browser-consult` command without:
+Repeat the preceding command without:
 
 ```text
 --dry-run
 ```
 
-The managed output file and provider terminal state are the result authority. Do not treat incidental terminal output as the plan.
+The managed output file and provider terminal state are the result authority. Incidental terminal output is not the approved brief.
 
-Review the answer manually. Promote only approved conclusions into durable repository artifacts:
+Review the brief manually. For the first `lite` smoke test, keep it as evidence under:
 
 ```text
-plans/plan-browser-smoke-test.md
-tasks/contracts/browser-smoke-test.contract.md
+.ai/harness/handoff/gptpro/
 ```
 
-A minimal task contract should freeze:
+Do not promote it into a heavyweight plan or task contract unless the effective-state resolver selects a workflow that requires those artifacts.
 
-```markdown
-# Task Contract: browser-smoke-test
-
-## Goal
-
-## Base
-
-- Base branch:
-- Base commit:
-
-## Allowed Paths
-
-## Forbidden Paths
-
-## Requirements
-
-## Required Checks
-
-## Acceptance Criteria
-
-## Rollback
-```
-
-The raw Browser Engine answer remains evidence; it is not automatically the repository contract.
-
-## 7. Verify the connected GitHub app in ChatGPT
+## 8. Verify the GitHub app in ChatGPT
 
 In ChatGPT:
 
@@ -243,22 +303,27 @@ In ChatGPT:
 4. Select or sync `drunkod/nix-config-1` when repository selection is available.
 5. Start a new conversation and select the GitHub app.
 
-Run a read-only smoke test:
+Run a read-only test:
 
 ```text
 Use the GitHub skill and connected GitHub app.
 
 Repository: drunkod/nix-config-1
 
-Fetch repository metadata and read REPO-HARNESS.md from master.
+Fetch repository metadata and read README.md from master.
 Do not create or update anything.
 ```
 
-A visible GitHub tool event is required. Assistant prose claiming that a tool was called is not proof of access.
+A visible GitHub tool event is required. Assistant prose claiming that a tool was called is not evidence of access.
 
-## 8. Run a minimal Create test
+## 9. Run a minimal Create smoke test
 
-After the plan and contract are committed to a branch visible on GitHub, begin a new ChatGPT conversation:
+The Oracle brief exists only in the local test worktree. Before GitHub Create, either:
+
+- copy the approved brief text into the ChatGPT request; or
+- commit an approved brief to a branch visible on GitHub.
+
+For the smallest test, paste the reviewed brief and use this prompt in a new GitHub-app conversation:
 
 ```text
 Use the GitHub skill and connected GitHub app.
@@ -266,31 +331,29 @@ Use the GitHub skill and connected GitHub app.
 Repository: drunkod/nix-config-1
 Base branch: master
 
-Read:
-- AGENTS.md
-- plans/plan-browser-smoke-test.md
-- tasks/contracts/browser-smoke-test.contract.md
-- docs/repo-harness-chatgpt-browser-setup.md
+Implement this approved documentation brief:
+<paste the reviewed brief>
 
-Before writing, return:
-1. the exact base commit;
-2. the proposed branch name agent/browser-smoke-test;
-3. the exact files to change;
-4. confirmation that every path is allowed by the contract.
+Before writing:
+1. report the exact base commit;
+2. propose branch agent/browser-smoke-test;
+3. confirm that only docs/spec.md will change;
+4. show the proposed text.
 
 After explicit confirmation:
 - create the branch;
-- update only the approved documentation file;
+- update only docs/spec.md;
 - create one commit;
 - open a draft pull request;
+- do not mark it ready;
 - do not merge.
 ```
 
-For several related files, prefer one Git commit rather than one commit per file. Keep the PR in draft state.
+GitHub writes are explicit actions. Confirm the repository, branch, target path, and proposed content before authorizing them.
 
-## 9. Run an independent Review test
+## 10. Run an independent Review smoke test
 
-Start another new ChatGPT conversation. Do not reuse the Create conversation.
+Start a separate ChatGPT conversation. Do not reuse the Create conversation.
 
 ```text
 Use the Review Follow-up and CI Debug skills with the GitHub app.
@@ -298,9 +361,8 @@ Use the Review Follow-up and CI Debug skills with the GitHub app.
 Repository: drunkod/nix-config-1
 Pull request: <number>
 
-Compare the final PR against:
-- plans/plan-browser-smoke-test.md
-- tasks/contracts/browser-smoke-test.contract.md
+Review the final PR against this approved brief:
+<paste the approved brief>
 
 Inspect:
 - PR metadata;
@@ -324,78 +386,31 @@ Do not rerun jobs.
 Do not approve or merge the PR.
 ```
 
-The review result is advisory. A human must inspect the final commit, checks, review threads, and residual risk before merge.
+The review result is advisory. A human must inspect the final commit, checks, open threads, and residual risk before merge.
 
-## 10. Save durable review evidence
+## 11. Troubleshooting
 
-Promote an approved review summary into:
+### `path is not allowed for read`
+
+Check the default allowlist in section 4. Replace an arbitrary root file with an allowed canonical path such as:
 
 ```text
-tasks/reviews/browser-smoke-test.review.md
+README.md
+AGENTS.md
+docs/spec.md
 ```
 
-Recommended structure:
+Do not move secret or unrelated content into an allowed directory merely to bypass the path gate.
 
-```markdown
-# Review: browser-smoke-test
+### `blocked_default_profile`
 
-## Human Review Card
+When the top-level provider is Oracle and `status` is `ready`, this is a native-provider diagnostic warning only. Continue with Oracle.
 
-- Verdict:
-- PR:
-- Base commit:
-- Implementation commit:
-- Intended paths:
-- Actual paths:
-- CI status:
-- Failed or skipped checks:
-- Residual risk:
-- Rollback:
-- Recommended action:
-
-## Requirements
-
-## Findings
-
-## Blocking Issues
-
-## Non-Blocking Concerns
-
-## CI Evidence
-
-## Review Threads
-```
-
-Creating or updating this file is another GitHub write action and requires explicit approval.
-
-## 11. Keep the trust boundaries
-
-- Browser planning must not modify implementation files.
-- GitHub Create must stay inside the approved contract paths.
-- Browser Review must use the final PR commit and current CI evidence.
-- Browser sessions, cookies, tokens, and temporary capture files remain untracked.
-- Comments, review submissions, thread resolution, job reruns, PR readiness, and merge are separate write actions.
-- Never enable auto-merge for the smoke test.
-- Merge remains a human decision.
-
-## 12. Troubleshooting
-
-### Browser doctor is not ready
-
-Run:
-
-```bash
-repo-harness chatgpt browser-doctor \
-  --repo . \
-  --provider oracle \
-  --json
-```
-
-Follow the returned `agent_actions`. Do not guess an Oracle installation command when the doctor provides source-aware remediation.
+For native CDP diagnostics, use a separate non-default automation user-data directory. The native provider is deprecated and is not needed for this workflow.
 
 ### Browser capture is incomplete
 
-When the session reports `ORACLE_CAPTURE_INCOMPLETE`, resume the existing provider session:
+When a session reports `ORACLE_CAPTURE_INCOMPLETE`, resume the saved provider session:
 
 ```bash
 repo-harness chatgpt browser-followup \
@@ -404,19 +419,15 @@ repo-harness chatgpt browser-followup \
   --prompt "Continue and return the complete requested result."
 ```
 
-Do not submit the original prompt a second time automatically.
+Do not automatically resubmit the original prompt because Oracle may already have submitted it.
 
 ### GitHub app cannot see the repository
 
-Check the GitHub app installation and selected repositories in ChatGPT settings. Syncing improves retrieval, but repository access still depends on the GitHub app installation permissions.
+Check the app installation, selected account or organisation, and repository permissions in ChatGPT settings. A visible tool event is required.
 
 ### A GitHub file update conflicts
 
-The file content SHA is stale. Refetch the file from the target branch, review the newer content, and construct a new update. Do not force the previous replacement.
-
-### Adoption generated many files
-
-That is expected for the first repository adoption. Keep the work on a separate branch, inspect every generated file, and commit adoption separately from functional changes.
+The content SHA is stale. Refetch the file from the target branch, review the newer content, and construct a new update. Do not force the old replacement.
 
 ## Minimal checklist
 
@@ -425,11 +436,12 @@ That is expected for the first repository adoption. Keep the work on a separate 
 [ ] repository adoption completed
 [ ] strict workflow check passes
 [ ] generated adoption files reviewed
-[ ] Browser doctor reports ready
+[ ] Oracle doctor reports ready
 [ ] signed-in Chrome profile is bound
-[ ] planning dry run inspected
-[ ] real planning session captured
-[ ] approved plan and contract committed
+[ ] no-attachment dry run succeeds
+[ ] real Reply-exactly-OK consult succeeds
+[ ] planning dry run uses only allowed paths
+[ ] real bounded brief is captured
 [ ] GitHub app read test succeeds
 [ ] Create uses a dedicated branch and draft PR
 [ ] Review uses a new conversation
