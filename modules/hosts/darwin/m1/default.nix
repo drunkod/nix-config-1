@@ -119,6 +119,7 @@ in
       nixMaintenanceM1Mini
       aerospace
       homebrewM1Minimal
+      sleepless
       kitty
     ];
   };
