@@ -96,14 +96,14 @@
       masApps = {
         "Adguard for Safari" = 1440147259; # Safari
         "Bitwarden" = 1352778147; # Safari
-        # "FileZilla Pro - FTP and Client" = 1298486278;
+        # "FileZilla Pro - FTP and Client" = 1298486723;
         # "FileZilla Pro RemoteDrive" = -2087754162;
         "Keynote" = 409183694;
         "LanguageTool - Grammer Checker" = 1534275760; # Safari
         "Microsoft Remote Desktop" = 1295203466;
         "Numbers" = 409203825;
         "Pages" = 409201541;
-        "Sauce for Strava™" = 1570925257; # Safari
+        "Sauce for Strava™" = 1570922521; # Safari
         "Userscripts" = 1463298887; # Safari
         "Xcode" = 497799835;
       };
