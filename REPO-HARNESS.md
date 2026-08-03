@@ -180,7 +180,8 @@ Confirm network access and Bun operation:
 
 ```bash
 bun --version
-bun add -g repo-harness
+bun add -g \
+  'git+https://github.com/drunkod/repo-harness.git#agent/chatgpt-github-create-mvp'
 ```
 
 Then retry:
