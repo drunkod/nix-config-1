@@ -85,8 +85,8 @@
 
           echo
           echo "Next steps inside a target repository:"
-          echo "  rh-adopt"
-          echo "  repo-harness adopt"
+          echo "  rh-init"
+          echo "  repo-harness init"
           echo "  repo-harness run check-task-workflow --strict"
         '';
       };
@@ -146,8 +146,8 @@
         '';
       };
 
-      repoHarnessAdoptCurrent = pkgs.writeShellApplication {
-        name = "repo-harness-adopt-current";
+      repoHarnessInitCurrent = pkgs.writeShellApplication {
+        name = "repo-harness-init-current";
         runtimeInputs = repoHarnessRuntimeInputs;
         text = ''
           set -euo pipefail
@@ -160,12 +160,12 @@
             exit 127
           fi
 
-          echo "Previewing repo-harness adoption for: $PWD"
-          "$cli" adopt --dry-run
+          echo "Previewing repo-harness initialization for: $PWD"
+          "$cli" init --dry-run
 
           echo
           echo "If the dry run looks correct, apply it with:"
-          echo "  repo-harness adopt"
+          echo "  repo-harness init"
         '';
       };
 
@@ -195,7 +195,7 @@
           repoHarnessLauncher
           repoHarnessBootstrap
           repoHarnessGenerateHostConfig
-          repoHarnessAdoptCurrent
+          repoHarnessInitCurrent
           repoHarnessCheck
         ];
 
@@ -206,7 +206,7 @@
         shellAliases = {
           rh-bootstrap = "repo-harness-bootstrap";
           rh-generate-host-config = "repo-harness-generate-host-config";
-          rh-adopt = "repo-harness-adopt-current";
+          rh-init = "repo-harness-init-current";
           rh-check = "repo-harness-check";
         };
       };
