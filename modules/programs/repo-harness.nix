@@ -19,6 +19,22 @@
         jq
       ];
 
+      # Bun 1.3.13 can report DependencyLoop when replacing an existing npm
+      # global package with a Git source of the same package name. Remove the
+      # registered global dependency first, then install the selected branch.
+      repoHarnessInstall = ''
+        global_manifest="$BUN_INSTALL/install/global/package.json"
+
+        if [ -f "$global_manifest" ] \
+          && jq -e '(.dependencies // {}) | has("repo-harness")' "$global_manifest" >/dev/null
+        then
+          echo "Removing existing repo-harness global package before switching sources..."
+          bun remove -g repo-harness
+        fi
+
+        bun add -g ${lib.escapeShellArg repoHarnessSource}
+      '';
+
       # Keep the mutable Bun installation explicit, but provide a stable command
       # after Home Manager activation. This avoids routing an expected first-run
       # state through the shell's command-not-found handler.
@@ -57,7 +73,7 @@
           export PATH="$BUN_INSTALL/bin:$PATH"
 
           echo "Installing or refreshing repo-harness CLI with Bun..."
-          bun add -g ${lib.escapeShellArg repoHarnessSource}
+          ${repoHarnessInstall}
 
           echo
           echo "repo-harness CLI:"
@@ -103,7 +119,7 @@
           echo "  $generated_home"
           echo
 
-          bun add -g ${lib.escapeShellArg repoHarnessSource}
+          ${repoHarnessInstall}
           "$BUN_INSTALL/bin/repo-harness" install
 
           echo
