@@ -116,8 +116,7 @@ Bind it:
 ```bash
 repo-harness chatgpt browser-setup \
   --repo . \
-  --profile-dir "$CHROME_PROFILE" \
-  --browser-channel chrome
+  --profile-dir "$CHROME_PROFILE"
 ```
 
 Validate again:
