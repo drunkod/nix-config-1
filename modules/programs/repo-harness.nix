@@ -6,6 +6,9 @@
       ...
     }:
     let
+      repoHarnessSource =
+        "git+https://github.com/drunkod/repo-harness.git#agent/chatgpt-github-create-mvp";
+
       repoHarnessRuntimeInputs = with pkgs; [
         bash
         bun
@@ -54,7 +57,7 @@
           export PATH="$BUN_INSTALL/bin:$PATH"
 
           echo "Installing or refreshing repo-harness CLI with Bun..."
-          bun add -g repo-harness
+          bun add -g ${lib.escapeShellArg repoHarnessSource}
 
           echo
           echo "repo-harness CLI:"
@@ -100,7 +103,7 @@
           echo "  $generated_home"
           echo
 
-          bun add -g repo-harness
+          bun add -g ${lib.escapeShellArg repoHarnessSource}
           "$BUN_INSTALL/bin/repo-harness" install
 
           echo
