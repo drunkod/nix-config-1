@@ -6,6 +6,9 @@
       ...
     }:
     let
+      repoHarnessSource =
+        "git+https://github.com/drunkod/repo-harness.git#agent/chatgpt-github-create-mvp";
+
       repoHarnessRuntimeInputs = with pkgs; [
         bash
         bun
@@ -15,6 +18,22 @@
         git
         jq
       ];
+
+      # Bun 1.3.13 can report DependencyLoop when replacing an existing npm
+      # global package with a Git source of the same package name. Remove the
+      # registered global dependency first, then install the selected branch.
+      repoHarnessInstall = ''
+        global_manifest="$BUN_INSTALL/install/global/package.json"
+
+        if [ -f "$global_manifest" ] \
+          && jq -e '(.dependencies // {}) | has("repo-harness")' "$global_manifest" >/dev/null
+        then
+          echo "Removing existing repo-harness global package before switching sources..."
+          bun remove -g repo-harness
+        fi
+
+        bun add -g ${lib.escapeShellArg repoHarnessSource}
+      '';
 
       # Keep the mutable Bun installation explicit, but provide a stable command
       # after Home Manager activation. This avoids routing an expected first-run
@@ -54,7 +73,7 @@
           export PATH="$BUN_INSTALL/bin:$PATH"
 
           echo "Installing or refreshing repo-harness CLI with Bun..."
-          bun add -g repo-harness
+          ${repoHarnessInstall}
 
           echo
           echo "repo-harness CLI:"
@@ -66,8 +85,8 @@
 
           echo
           echo "Next steps inside a target repository:"
-          echo "  rh-adopt"
-          echo "  repo-harness adopt"
+          echo "  rh-init"
+          echo "  repo-harness init"
           echo "  repo-harness run check-task-workflow --strict"
         '';
       };
@@ -100,7 +119,7 @@
           echo "  $generated_home"
           echo
 
-          bun add -g repo-harness
+          ${repoHarnessInstall}
           "$BUN_INSTALL/bin/repo-harness" install
 
           echo
@@ -127,8 +146,8 @@
         '';
       };
 
-      repoHarnessAdoptCurrent = pkgs.writeShellApplication {
-        name = "repo-harness-adopt-current";
+      repoHarnessInitCurrent = pkgs.writeShellApplication {
+        name = "repo-harness-init-current";
         runtimeInputs = repoHarnessRuntimeInputs;
         text = ''
           set -euo pipefail
@@ -141,12 +160,12 @@
             exit 127
           fi
 
-          echo "Previewing repo-harness adoption for: $PWD"
-          "$cli" adopt --dry-run
+          echo "Previewing repo-harness initialization for: $PWD"
+          "$cli" init --dry-run
 
           echo
           echo "If the dry run looks correct, apply it with:"
-          echo "  repo-harness adopt"
+          echo "  repo-harness init"
         '';
       };
 
@@ -176,7 +195,7 @@
           repoHarnessLauncher
           repoHarnessBootstrap
           repoHarnessGenerateHostConfig
-          repoHarnessAdoptCurrent
+          repoHarnessInitCurrent
           repoHarnessCheck
         ];
 
@@ -187,7 +206,7 @@
         shellAliases = {
           rh-bootstrap = "repo-harness-bootstrap";
           rh-generate-host-config = "repo-harness-generate-host-config";
-          rh-adopt = "repo-harness-adopt-current";
+          rh-init = "repo-harness-init-current";
           rh-check = "repo-harness-check";
         };
       };

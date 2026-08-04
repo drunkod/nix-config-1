@@ -38,8 +38,11 @@ Verify it:
 
 ```bash
 repo-harness --version
+repo-harness chatgpt browser-create --help
 rh-check
 ```
+
+`rh-check` audits the broader host setup, including optional global adapters, CodeGraph, external skills, agent definitions, trust state, and security findings. A `blocked` result does not by itself mean that the CLI bootstrap failed. Confirm the CLI-specific checks and address only the optional capabilities that this host should enable.
 
 ## Available helper commands
 
@@ -47,7 +50,7 @@ rh-check
 |---|---|
 | `rh-bootstrap` | Install or refresh repo-harness in `~/.bun/bin` |
 | `rh-generate-host-config` | Run upstream host installation inside an isolated temporary home for inspection |
-| `rh-adopt` | Preview adoption of the current repository |
+| `rh-init` | Preview initialization or refresh of the current repository |
 | `rh-check` | Run `repo-harness setup check --json` |
 
 The long command names remain available:
@@ -55,23 +58,23 @@ The long command names remain available:
 ```text
 repo-harness-bootstrap
 repo-harness-generate-host-config
-repo-harness-adopt-current
+repo-harness-init-current
 repo-harness-check
 ```
 
-## Adopt a repository
+## Initialize or refresh a repository
 
 Enter the target repository and preview the changes:
 
 ```bash
 cd /path/to/repository
-rh-adopt
+rh-init
 ```
 
-Apply adoption only after reviewing the preview:
+Apply the initialization only after reviewing the preview:
 
 ```bash
-repo-harness adopt
+repo-harness init
 ```
 
 Run the canonical workflow check:
@@ -180,7 +183,8 @@ Confirm network access and Bun operation:
 
 ```bash
 bun --version
-bun add -g repo-harness
+bun add -g \
+  'git+https://github.com/drunkod/repo-harness.git#agent/chatgpt-github-create-mvp'
 ```
 
 Then retry:
