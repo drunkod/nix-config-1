@@ -9,6 +9,7 @@
     packages = with pkgs; [
       vim
       git
+      shellcheck
     ];
   };
 

@@ -115,6 +115,8 @@
               system
               ;
           };
+
+          checks = import ./checks/repo-harness-mcp.nix { inherit pkgs; };
         };
     };
 }
