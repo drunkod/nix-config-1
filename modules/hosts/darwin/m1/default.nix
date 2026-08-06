@@ -33,6 +33,8 @@ let
 
   aiFullImports = aiCoreImports ++ [
     config.flake.modules.homeManager.repo-harness
+    config.flake.modules.homeManager.repo-harness-mcp
+    config.flake.modules.homeManager.cloudflared-mcp-tunnel
     config.flake.modules.homeManager.codex
     config.flake.modules.homeManager."pi-coding-agent"
     config.flake.modules.homeManager.jules
@@ -126,9 +128,32 @@ in
 
   flake.modules.darwin.m1-min = {
     host = minimalHost;
-    home-manager.users.${minimalHost.user.name} = {
-      imports = aiFullImports;
-      services.sops.enable = true;
-    };
+    home-manager.users.${minimalHost.user.name} =
+      { config, ... }:
+      {
+        imports = aiFullImports;
+        services = {
+          sops.enable = true;
+
+          repo-harness-mcp = {
+            enable = true;
+            repoPath = "${config.home.homeDirectory}/nix-config";
+            profile = "coding";
+            accessMode = "read_write";
+            host = "127.0.0.1";
+            port = 8765;
+            serverName = "repo-harness-coding";
+            publicEndpoint = null;
+            autoStart = true;
+          };
+
+          cloudflared-mcp-tunnel = {
+            enable = true;
+            localHost = "127.0.0.1";
+            localPort = 8765;
+            autoStart = true;
+          };
+        };
+      };
   };
 }
