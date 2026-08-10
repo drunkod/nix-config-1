@@ -8,9 +8,11 @@ host="${MCP_HOST:-127.0.0.1}"
 port="${MCP_PORT:-8765}"
 require_command curl
 require_loopback_host "$host"
+require_port "$port"
+url_host="$(format_url_host "$host")"
 
-curl --fail --silent --show-error --max-time 5 "http://${host}:${port}/health"
+curl --fail --silent --show-error --max-time 5 "http://${url_host}:${port}/health"
 printf '\n'
 curl --fail --silent --show-error --max-time 5 \
-  "http://${host}:${port}/.well-known/oauth-protected-resource/mcp" >/dev/null
+  "http://${url_host}:${port}/.well-known/oauth-protected-resource/mcp" >/dev/null
 log "local health and OAuth discovery checks passed"
