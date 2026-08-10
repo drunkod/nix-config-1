@@ -8,9 +8,19 @@ name="${CLOUDFLARED_TUNNEL_NAME:-repo-harness-coding}"
 dry_run=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --name) name="$2"; shift 2 ;;
-    --dry-run) dry_run=1; shift ;;
-    -h|--help) echo "usage: $0 [--name NAME] [--dry-run]"; exit 0 ;;
+    --name)
+      [ "$#" -ge 2 ] || die "--name requires a value"
+      name="$2"
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    -h|--help)
+      echo "usage: $0 [--name NAME] [--dry-run]"
+      exit 0
+      ;;
     *) die "unknown argument: $1" ;;
   esac
 done
