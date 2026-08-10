@@ -20,6 +20,8 @@
       isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
       isLinux = pkgs.stdenv.hostPlatform.isLinux;
       serviceLabel = "org.nix-community.home.cloudflared-mcp-tunnel";
+      localUrlHost = if cfg.localHost == "::1" then "[::1]" else cfg.localHost;
+      isOutsideNixStore = path: path != "/nix/store" && !hasPrefix "/nix/store/" path;
 
       runner = pkgs.writeShellApplication {
         name = "cloudflared-mcp-tunnel-run";
@@ -27,6 +29,7 @@
           cloudflared
           coreutils
           curl
+          jq
         ];
         text = ''
           set -euo pipefail
@@ -44,7 +47,7 @@
 
           while IFS='=' read -r key value; do
             case "$key" in
-              ''|'#'*) continue ;;
+              ""|'#'*) continue ;;
               CLOUDFLARED_TUNNEL_ID) tunnel_id="$value" ;;
               CLOUDFLARED_HOSTNAME) hostname="$value" ;;
               CLOUDFLARED_CREDENTIALS_FILE) credentials_file="$value" ;;
@@ -59,7 +62,7 @@
             echo "cloudflared MCP: invalid tunnel UUID" >&2
             exit 1
           }
-          [[ "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] || {
+          [[ "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] && [[ "$hostname" != *..* ]] || {
             echo "cloudflared MCP: invalid hostname" >&2
             exit 1
           }
@@ -67,6 +70,13 @@
           if [ -z "$credentials_file" ]; then
             credentials_file="$HOME/.cloudflared/$tunnel_id.json"
           fi
+          case "$credentials_file" in
+            /*) ;;
+            *)
+              echo "cloudflared MCP: credentials path must be absolute" >&2
+              exit 1
+              ;;
+          esac
           [ -f "$credentials_file" ] || {
             echo "cloudflared MCP: credentials file is missing: $credentials_file" >&2
             exit 0
@@ -75,7 +85,7 @@
           ready=0
           for _ in $(seq 1 ${toString cfg.healthWaitSeconds}); do
             if curl --fail --silent --max-time 1 \
-              http://${cfg.localHost}:${toString cfg.localPort}/health >/dev/null 2>&1
+              http://${localUrlHost}:${toString cfg.localPort}/health >/dev/null 2>&1
             then
               ready=1
               break
@@ -87,17 +97,19 @@
             exit 1
           }
 
+          credentials_json="$(printf '%s' "$credentials_file" | jq -Rs .)"
+
           umask 077
           mkdir -p "$(dirname "$runtime_config")"
           tmp="$(mktemp "$runtime_config.tmp.XXXXXX")"
           trap 'rm -f "$tmp"' EXIT
           cat >"$tmp" <<YAML
 tunnel: $tunnel_id
-credentials-file: $credentials_file
+credentials-file: $credentials_json
 
 ingress:
   - hostname: $hostname
-    service: http://${cfg.localHost}:${toString cfg.localPort}
+    service: http://${localUrlHost}:${toString cfg.localPort}
   - service: http_status:404
 YAML
           mv "$tmp" "$runtime_config"
@@ -124,14 +136,17 @@ YAML
           while [ "$#" -gt 0 ]; do
             case "$1" in
               --tunnel-id)
+                [ "$#" -ge 2 ] || { echo "--tunnel-id requires a value" >&2; exit 2; }
                 tunnel_id="$2"
                 shift 2
                 ;;
               --hostname)
+                [ "$#" -ge 2 ] || { echo "--hostname requires a value" >&2; exit 2; }
                 hostname="$2"
                 shift 2
                 ;;
               --credentials-file)
+                [ "$#" -ge 2 ] || { echo "--credentials-file requires a value" >&2; exit 2; }
                 credentials_file="$2"
                 shift 2
                 ;;
@@ -154,13 +169,20 @@ YAML
             echo "invalid tunnel UUID" >&2
             exit 1
           }
-          [[ "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] || {
+          [[ "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] && [[ "$hostname" != *..* ]] || {
             echo "invalid hostname" >&2
             exit 1
           }
           if [ -z "$credentials_file" ]; then
             credentials_file="$HOME/.cloudflared/$tunnel_id.json"
           fi
+          case "$credentials_file" in
+            /*) ;;
+            *)
+              echo "credentials path must be absolute" >&2
+              exit 1
+              ;;
+          esac
 
           render() {
             printf 'CLOUDFLARED_TUNNEL_ID=%s\n' "$tunnel_id"
@@ -271,15 +293,27 @@ YAML
       config = mkIf cfg.enable {
         assertions = [
           {
-            assertion = !hasPrefix "/nix/store/" cfg.environmentFile;
+            assertion = hasPrefix "/" cfg.environmentFile;
+            message = "cloudflared MCP environmentFile must be an absolute path.";
+          }
+          {
+            assertion = isOutsideNixStore cfg.environmentFile;
             message = "cloudflared MCP environmentFile must remain outside the Nix store.";
           }
           {
-            assertion = !hasPrefix "/nix/store/" cfg.runtimeConfigFile;
+            assertion = hasPrefix "/" cfg.runtimeConfigFile;
+            message = "cloudflared MCP runtimeConfigFile must be an absolute path.";
+          }
+          {
+            assertion = isOutsideNixStore cfg.runtimeConfigFile;
             message = "cloudflared MCP runtimeConfigFile must remain outside the Nix store.";
           }
           {
-            assertion = !hasPrefix "/nix/store/" cfg.logDirectory;
+            assertion = hasPrefix "/" cfg.logDirectory;
+            message = "cloudflared MCP logDirectory must be an absolute path.";
+          }
+          {
+            assertion = isOutsideNixStore cfg.logDirectory;
             message = "cloudflared MCP logs must remain outside the Nix store.";
           }
         ];
