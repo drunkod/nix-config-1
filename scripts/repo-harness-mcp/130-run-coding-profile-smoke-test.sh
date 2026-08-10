@@ -9,10 +9,25 @@ host="${MCP_HOST:-127.0.0.1}"
 port="${MCP_PORT:-8765}"
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --repo) repo="$2"; shift 2 ;;
-    --host) host="$2"; shift 2 ;;
-    --port) port="$2"; shift 2 ;;
-    -h|--help) echo "usage: $0 [--repo PATH] [--host 127.0.0.1] [--port 8765]"; exit 0 ;;
+    --repo)
+      [ "$#" -ge 2 ] || die "--repo requires a value"
+      repo="$2"
+      shift 2
+      ;;
+    --host)
+      [ "$#" -ge 2 ] || die "--host requires a value"
+      host="$2"
+      shift 2
+      ;;
+    --port)
+      [ "$#" -ge 2 ] || die "--port requires a value"
+      port="$2"
+      shift 2
+      ;;
+    -h|--help)
+      echo "usage: $0 [--repo PATH] [--host 127.0.0.1] [--port 8765]"
+      exit 0
+      ;;
     *) die "unknown argument: $1" ;;
   esac
 done
@@ -21,6 +36,7 @@ repo="$(resolve_repo "$repo")"
 require_command jq
 require_command repo-harness
 require_loopback_host "$host"
+require_port "$port"
 
 config_file="$HOME/.repo-harness/mcp.local.json"
 [ -f "$config_file" ] || die "MCP config is missing"
