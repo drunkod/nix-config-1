@@ -7,8 +7,15 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 repo=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --repo) repo="$2"; shift 2 ;;
-    -h|--help) echo "usage: $0 [--repo PATH]"; exit 0 ;;
+    --repo)
+      [ "$#" -ge 2 ] || die "--repo requires a value"
+      repo="$2"
+      shift 2
+      ;;
+    -h|--help)
+      echo "usage: $0 [--repo PATH]"
+      exit 0
+      ;;
     *) die "unknown argument: $1" ;;
   esac
 done
