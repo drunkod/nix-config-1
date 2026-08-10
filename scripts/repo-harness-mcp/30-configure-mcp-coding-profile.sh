@@ -13,12 +13,35 @@ dry_run=0
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --repo) repo="$2"; shift 2 ;;
-    --endpoint) endpoint="$2"; shift 2 ;;
-    --host) host="$2"; shift 2 ;;
-    --port) port="$2"; shift 2 ;;
-    --server-name) server_name="$2"; shift 2 ;;
-    --dry-run) dry_run=1; shift ;;
+    --repo)
+      [ "$#" -ge 2 ] || die "--repo requires a value"
+      repo="$2"
+      shift 2
+      ;;
+    --endpoint)
+      [ "$#" -ge 2 ] || die "--endpoint requires a value"
+      endpoint="$2"
+      shift 2
+      ;;
+    --host)
+      [ "$#" -ge 2 ] || die "--host requires a value"
+      host="$2"
+      shift 2
+      ;;
+    --port)
+      [ "$#" -ge 2 ] || die "--port requires a value"
+      port="$2"
+      shift 2
+      ;;
+    --server-name)
+      [ "$#" -ge 2 ] || die "--server-name requires a value"
+      server_name="$2"
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
     -h|--help)
       echo "usage: $0 --repo PATH --endpoint https://HOST/mcp [--host 127.0.0.1] [--port 8765] [--server-name NAME] [--dry-run]"
       exit 0
@@ -32,8 +55,9 @@ require_command repo-harness
 require_command jq
 require_loopback_host "$host"
 require_https_mcp_endpoint "$endpoint"
-[[ "$port" =~ ^[0-9]+$ ]] && [ "$port" -ge 1 ] && [ "$port" -le 65535 ] \
-  || die "invalid port: $port"
+require_port "$port"
+[[ "$server_name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] \
+  || die "invalid server name: $server_name"
 
 cmd=(
   repo-harness mcp setup chatgpt
