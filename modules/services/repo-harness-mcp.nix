@@ -25,6 +25,7 @@
       serviceLabel = "org.nix-community.home.repo-harness-mcp";
       urlHost = if cfg.host == "::1" then "[::1]" else cfg.host;
       isOutsideNixStore = path: path != "/nix/store" && !hasPrefix "/nix/store/" path;
+      userConfigFile = "${config.home.homeDirectory}/.repo-harness/mcp.local.json";
 
       server = pkgs.writeShellApplication {
         name = "repo-harness-mcp-server";
@@ -38,7 +39,7 @@
           set -euo pipefail
 
           repo=${escapeShellArg (if cfg.repoPath == null then "" else cfg.repoPath)}
-          config_file="$HOME/.repo-harness/mcp.local.json"
+          config_file=${escapeShellArg userConfigFile}
           cli=${escapeShellArg profileBin}
 
           if [ -z "$repo" ] || [ ! -d "$repo" ]; then
@@ -155,7 +156,7 @@
 
           "''${cmd[@]}"
 
-          config_file="$HOME/.repo-harness/mcp.local.json"
+          config_file=${escapeShellArg userConfigFile}
           jq -e '
             .scope == "user"
             and .profile == "coding"
@@ -197,7 +198,7 @@
 
       restart = pkgs.writeShellApplication {
         name = "repo-harness-mcp-restart";
-        runtimeInputs = with pkgs; [ coreutils ];
+        runtimeInputs = [ pkgs.coreutils ] ++ lib.optionals isLinux [ pkgs.systemd ];
         text = ''
           set -euo pipefail
           case "$(uname -s)" in
@@ -333,7 +334,7 @@
           config = {
             Label = serviceLabel;
             ProgramArguments = [ "${server}/bin/repo-harness-mcp-server" ];
-            WorkingDirectory = if cfg.repoPath == null then config.home.homeDirectory else cfg.repoPath;
+            WorkingDirectory = config.home.homeDirectory;
             RunAtLoad = cfg.autoStart;
             KeepAlive = {
               SuccessfulExit = false;
@@ -354,7 +355,7 @@
             ExecStart = "${server}/bin/repo-harness-mcp-server";
             Restart = "on-failure";
             RestartSec = 10;
-            WorkingDirectory = if cfg.repoPath == null then config.home.homeDirectory else cfg.repoPath;
+            WorkingDirectory = config.home.homeDirectory;
           };
           Install.WantedBy = lib.optional cfg.autoStart "default.target";
         };
