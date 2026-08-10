@@ -23,6 +23,8 @@
       profileBin = "${config.home.profileDirectory}/bin/repo-harness";
       defaultEndpoint = if cfg.publicEndpoint == null then "" else cfg.publicEndpoint;
       serviceLabel = "org.nix-community.home.repo-harness-mcp";
+      urlHost = if cfg.host == "::1" then "[::1]" else cfg.host;
+      isOutsideNixStore = path: path != "/nix/store" && !hasPrefix "/nix/store/" path;
 
       server = pkgs.writeShellApplication {
         name = "repo-harness-mcp-server";
@@ -89,10 +91,12 @@
           while [ "$#" -gt 0 ]; do
             case "$1" in
               --repo)
+                [ "$#" -ge 2 ] || { echo "--repo requires a value" >&2; exit 2; }
                 repo="$2"
                 shift 2
                 ;;
               --endpoint)
+                [ "$#" -ge 2 ] || { echo "--endpoint requires a value" >&2; exit 2; }
                 endpoint="$2"
                 shift 2
                 ;;
@@ -171,10 +175,10 @@
         text = ''
           set -euo pipefail
           curl --fail --silent --show-error --max-time 5 \
-            http://${cfg.host}:${toString cfg.port}/health
+            http://${urlHost}:${toString cfg.port}/health
           printf '\n'
           curl --fail --silent --show-error --max-time 5 \
-            http://${cfg.host}:${toString cfg.port}/.well-known/oauth-protected-resource/mcp \
+            http://${urlHost}:${toString cfg.port}/.well-known/oauth-protected-resource/mcp \
             >/dev/null
           echo "repo-harness MCP health and OAuth discovery passed"
         '';
@@ -300,7 +304,11 @@
             message = "services.repo-harness-mcp.publicEndpoint must be HTTPS and end in /mcp.";
           }
           {
-            assertion = !hasPrefix "/nix/store/" cfg.logDirectory;
+            assertion = hasPrefix "/" cfg.logDirectory;
+            message = "services.repo-harness-mcp.logDirectory must be an absolute path.";
+          }
+          {
+            assertion = isOutsideNixStore cfg.logDirectory;
             message = "repo-harness MCP logs must not be written into the Nix store.";
           }
         ];
