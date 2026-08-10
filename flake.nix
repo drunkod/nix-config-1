@@ -42,7 +42,9 @@
 
     hyprland.url = "git+https://github.com/hyprwm/Hyprland?submodules=1";
 
-    noctalia.url = "github:noctalia-dev/noctalia-shell";
+    # This configuration still uses Noctalia v4's programs.noctalia-shell API.
+    # Upstream v5 moved to github:noctalia-dev/noctalia and programs.noctalia.
+    noctalia.url = "github:noctalia-dev/noctalia/legacy-v4";
     noctalia.inputs.nixpkgs.follows = "nixpkgs";
 
     graphify-src = {
