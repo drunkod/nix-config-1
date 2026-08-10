@@ -13,6 +13,7 @@
     }:
     let
       noctaliaPackage = inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      legacyPluginRegistry = "https://github.com/noctalia-dev/legacy-v4-plugins";
     in
     {
       imports = [
@@ -142,17 +143,17 @@
           sources = [
             {
               enabled = true;
-              name = "Official Noctalia Plugins";
-              url = "https://github.com/noctalia-dev/noctalia-plugins";
+              name = "Official Noctalia v4 Plugins";
+              url = legacyPluginRegistry;
             }
           ];
           states = {
             privacy-indicator = {
               enabled = true;
-              sourceUrl = "https://github.com/noctalia-dev/noctalia-plugins";
+              sourceUrl = legacyPluginRegistry;
             };
           };
-          version = 1;
+          version = 2;
         };
 
         pluginSettings = {
