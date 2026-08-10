@@ -31,10 +31,12 @@ require_loopback_host() {
 
 require_port() {
   local value="$1"
-  [[ "$value" =~ ^[0-9]+$ ]] \
-    && [ "$value" -ge 1 ] \
-    && [ "$value" -le 65535 ] \
-    || die "invalid TCP port: $value"
+  if ! [[ "$value" =~ ^[0-9]+$ ]] \
+    || [ "$value" -lt 1 ] \
+    || [ "$value" -gt 65535 ]
+  then
+    die "invalid TCP port: $value"
+  fi
 }
 
 format_url_host() {
