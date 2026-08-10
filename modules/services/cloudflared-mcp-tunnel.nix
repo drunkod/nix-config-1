@@ -62,12 +62,20 @@
             echo "cloudflared MCP: invalid tunnel UUID" >&2
             exit 1
           }
-          if ! [[ "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] \
-            || [[ "$hostname" == *..* ]]
-          then
+
+          valid_hostname=1
+          IFS='.' read -r -a hostname_labels <<< "$hostname"
+          [ "''${#hostname_labels[@]}" -gt 0 ] || valid_hostname=0
+          for label in "''${hostname_labels[@]}"; do
+            if ! [[ "$label" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$ ]]; then
+              valid_hostname=0
+              break
+            fi
+          done
+          [ "$valid_hostname" -eq 1 ] || {
             echo "cloudflared MCP: invalid hostname" >&2
             exit 1
-          fi
+          }
 
           if [ -z "$credentials_file" ]; then
             credentials_file="$HOME/.cloudflared/$tunnel_id.json"
@@ -76,6 +84,12 @@
             /*) ;;
             *)
               echo "cloudflared MCP: credentials path must be absolute" >&2
+              exit 1
+              ;;
+          esac
+          case "$credentials_file" in
+            /nix/store|/nix/store/*)
+              echo "cloudflared MCP: credentials must remain outside /nix/store" >&2
               exit 1
               ;;
           esac
@@ -171,12 +185,21 @@ YAML
             echo "invalid tunnel UUID" >&2
             exit 1
           }
-          if ! [[ "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] \
-            || [[ "$hostname" == *..* ]]
-          then
+
+          valid_hostname=1
+          IFS='.' read -r -a hostname_labels <<< "$hostname"
+          [ "''${#hostname_labels[@]}" -gt 0 ] || valid_hostname=0
+          for label in "''${hostname_labels[@]}"; do
+            if ! [[ "$label" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$ ]]; then
+              valid_hostname=0
+              break
+            fi
+          done
+          [ "$valid_hostname" -eq 1 ] || {
             echo "invalid hostname" >&2
             exit 1
-          fi
+          }
+
           if [ -z "$credentials_file" ]; then
             credentials_file="$HOME/.cloudflared/$tunnel_id.json"
           fi
@@ -184,6 +207,12 @@ YAML
             /*) ;;
             *)
               echo "credentials path must be absolute" >&2
+              exit 1
+              ;;
+          esac
+          case "$credentials_file" in
+            /nix/store|/nix/store/*)
+              echo "credentials must remain outside /nix/store" >&2
               exit 1
               ;;
           esac
@@ -222,7 +251,7 @@ YAML
 
       restart = pkgs.writeShellApplication {
         name = "cloudflared-mcp-tunnel-restart";
-        runtimeInputs = with pkgs; [ coreutils ];
+        runtimeInputs = [ pkgs.coreutils ] ++ lib.optionals isLinux [ pkgs.systemd ];
         text = ''
           set -euo pipefail
           case "$(uname -s)" in
