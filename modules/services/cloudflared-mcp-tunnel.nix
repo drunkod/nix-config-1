@@ -62,10 +62,12 @@
             echo "cloudflared MCP: invalid tunnel UUID" >&2
             exit 1
           }
-          [[ "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] && [[ "$hostname" != *..* ]] || {
+          if ! [[ "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] \
+            || [[ "$hostname" == *..* ]]
+          then
             echo "cloudflared MCP: invalid hostname" >&2
             exit 1
-          }
+          fi
 
           if [ -z "$credentials_file" ]; then
             credentials_file="$HOME/.cloudflared/$tunnel_id.json"
@@ -169,10 +171,12 @@ YAML
             echo "invalid tunnel UUID" >&2
             exit 1
           }
-          [[ "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] && [[ "$hostname" != *..* ]] || {
+          if ! [[ "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] \
+            || [[ "$hostname" == *..* ]]
+          then
             echo "invalid hostname" >&2
             exit 1
-          }
+          fi
           if [ -z "$credentials_file" ]; then
             credentials_file="$HOME/.cloudflared/$tunnel_id.json"
           fi
