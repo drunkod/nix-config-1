@@ -12,11 +12,7 @@
         enableBashIntegration = true;
         enableZshIntegration = true;
         onActivation = {
-          # Homebrew cask definitions use the DSL shipped by current Homebrew.
-          # Allow Homebrew to update itself/metadata before `brew bundle` so an
-          # older brew executable never tries to parse newer cask definitions.
-          # Keep `upgrade = false` so activation does not upgrade installed apps.
-          autoUpdate = true;
+          autoUpdate = false;
           upgrade = false;
           # TODO: switch back to `cleanup = "zap"` once nix-darwin emits
           # `--cleanup --zap` instead of the removed `--force-cleanup` flag.
