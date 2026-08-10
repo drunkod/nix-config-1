@@ -29,6 +29,21 @@ require_loopback_host() {
   esac
 }
 
+require_port() {
+  local value="$1"
+  [[ "$value" =~ ^[0-9]+$ ]] \
+    && [ "$value" -ge 1 ] \
+    && [ "$value" -le 65535 ] \
+    || die "invalid TCP port: $value"
+}
+
+format_url_host() {
+  case "$1" in
+    ::1) printf '[::1]' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
 require_https_mcp_endpoint() {
   case "$1" in
     https://*/mcp) ;;
@@ -37,14 +52,40 @@ require_https_mcp_endpoint() {
 }
 
 require_hostname() {
-  [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] \
-    || die "invalid DNS hostname: $1"
-  [[ "$1" != *..* ]] || die "invalid DNS hostname: $1"
+  local value="$1"
+  local label
+  local -a labels=()
+
+  [ -n "$value" ] || die "DNS hostname must not be empty"
+  [ "${#value}" -le 253 ] || die "DNS hostname is too long: $value"
+  [[ "$value" =~ ^[A-Za-z0-9.-]+$ ]] || die "invalid DNS hostname: $value"
+  [[ "$value" != .* && "$value" != *. && "$value" != *..* ]] \
+    || die "invalid DNS hostname: $value"
+
+  IFS='.' read -r -a labels <<< "$value"
+  for label in "${labels[@]}"; do
+    [[ "$label" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$ ]] \
+      || die "invalid DNS hostname label in: $value"
+  done
 }
 
 require_uuid() {
   [[ "$1" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] \
     || die "invalid tunnel UUID: $1"
+}
+
+require_absolute_path() {
+  case "$1" in
+    /*) ;;
+    *) die "path must be absolute: $1" ;;
+  esac
+}
+
+require_outside_nix_store() {
+  case "$1" in
+    /nix/store|/nix/store/*) die "runtime path must remain outside /nix/store: $1" ;;
+    *) ;;
+  esac
 }
 
 print_command() {
