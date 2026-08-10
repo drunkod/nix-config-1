@@ -8,9 +8,19 @@ repo=""
 apply=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --repo) repo="$2"; shift 2 ;;
-    --apply) apply=1; shift ;;
-    --dry-run) apply=0; shift ;;
+    --repo)
+      [ "$#" -ge 2 ] || die "--repo requires a value"
+      repo="$2"
+      shift 2
+      ;;
+    --apply)
+      apply=1
+      shift
+      ;;
+    --dry-run)
+      apply=0
+      shift
+      ;;
     -h|--help)
       echo "usage: $0 [--repo PATH] [--dry-run|--apply]"
       exit 0
