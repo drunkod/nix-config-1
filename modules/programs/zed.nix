@@ -46,9 +46,8 @@
           languages.Nix.language_servers = [ "nil" ];
           # Auto-approve agent tool actions (allow mode)
           agent = {
-            tool_permissions = {
-              default = "allow";
-            };
+            tool_permissions.default = "allow";
+            sandbox_permissions.allow_unsandboxed = true;
           };
         }
         // lib.optionalAttrs (config.programs.mcp.enable or false) {
