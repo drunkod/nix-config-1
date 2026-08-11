@@ -13,11 +13,29 @@ URL and authorized again after the hostname changes.
 
 PR #9 enables `services.repo-harness-mcp-quick` on `m1-min`.
 
+Normal activation:
+
 ```bash
 cd ~/nix-config
 sudo darwin-rebuild switch --flake .#m1-min
 exec zsh
 ```
+
+When an unrelated nix-darwin activation phase is broken, the Home Manager part
+can be tested independently:
+
+```bash
+cd ~/nix-config
+nix build \
+  .#darwinConfigurations.m1-min.config.home-manager.users.test.home.activationPackage
+./result/activate
+exec zsh
+```
+
+The `rh-mcp-*` aliases point directly at their generated Nix store executables,
+so they remain usable after this standalone Home Manager activation even when
+`/etc/profiles/per-user/test/bin` still belongs to the previous nix-darwin
+system generation.
 
 The module installs these helpers:
 
@@ -55,11 +73,22 @@ validation:
 4. start a fresh tunnel with `--protocol http2`;
 5. wait for the generated `https://*.trycloudflare.com` URL;
 6. require `Registered tunnel connection ... protocol=http2`;
-7. probe public `/health` before bootstrap, accepting only `200` or the expected
-   stale-origin `421`;
-8. run `repo-harness-mcp-bootstrap --endpoint <new-url>/mcp`;
-9. restart Repo Harness;
-10. require public health, local OAuth discovery, and `mcp_ready` live doctor.
+7. keep that same registered tunnel alive while waiting for its generated
+   hostname to become resolvable/reachable;
+8. require consecutive stable public `/health` responses before bootstrap,
+   accepting only `200` or the expected stale-origin `421`;
+9. run `repo-harness-mcp-bootstrap --endpoint <new-url>/mcp`;
+10. restart Repo Harness;
+11. require public health, local OAuth discovery, and `mcp_ready` live doctor.
+
+The generated Quick Tunnel hostname can become available after the connector
+has already registered. Resolver failures such as `curl: (6) Could not resolve
+host` are therefore retried for up to `services.repo-harness-mcp-quick.publicReadySeconds`
+(default: 120 seconds) instead of immediately creating another hostname.
+
+If any step after `cloudflared` starts fails, the helper stops the child and
+removes the failed PID/URL state automatically while preserving
+`cloudflared.log` for diagnosis.
 
 Successful output ends with the new public origin and ChatGPT MCP URL.
 
