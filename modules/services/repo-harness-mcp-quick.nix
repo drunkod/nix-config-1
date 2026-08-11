@@ -21,9 +21,11 @@
       localUrlHost = if mcpCfg.host == "::1" then "[::1]" else mcpCfg.host;
       localOrigin = "http://${localUrlHost}:${toString mcpCfg.port}";
       runtimePath = "${config.home.homeDirectory}/.bun/bin:${config.home.profileDirectory}/bin:/usr/bin:/bin:/usr/sbin:/sbin";
-      logFile = "${cfg.stateDirectory}/cloudflared.log";
-      urlFile = "${cfg.stateDirectory}/public-url";
-      pidFile = "${cfg.stateDirectory}/cloudflared.pid";
+      stateDirectory = cfg.stateDirectory;
+      logFile = "${stateDirectory}/cloudflared.log";
+      urlFile = "${stateDirectory}/public-url";
+      pidFile = "${stateDirectory}/cloudflared.pid";
+      configFile = "${config.home.homeDirectory}/.repo-harness/mcp.local.json";
       bootstrapBin = "${config.home.profileDirectory}/bin/repo-harness-mcp-bootstrap";
       restartBin = "${config.home.profileDirectory}/bin/repo-harness-mcp-restart";
       healthBin = "${config.home.profileDirectory}/bin/repo-harness-mcp-health";
@@ -43,7 +45,7 @@
 
           repo=${escapeShellArg (if mcpCfg.repoPath == null then "" else mcpCfg.repoPath)}
           local_origin=${escapeShellArg localOrigin}
-          state_dir=${escapeShellArg cfg.stateDirectory}
+          state_dir=${escapeShellArg stateDirectory}
           log_file=${escapeShellArg logFile}
           url_file=${escapeShellArg urlFile}
           pid_file=${escapeShellArg pidFile}
@@ -60,7 +62,7 @@
           for helper in "$bootstrap" "$restart" "$health" "$doctor"; do
             [ -x "$helper" ] || {
               echo "quick tunnel: required helper is unavailable: $helper" >&2
-              echo "rebuild m1-min before using rh-mcp-quick-restart" >&2
+              echo "rebuild/activate m1-min before using rh-mcp-quick-restart" >&2
               exit 127
             }
           done
@@ -77,21 +79,21 @@
           then
             echo "quick tunnel: local MCP is not healthy; restarting it first"
             "$restart"
-            ready=0
+            local_ready=0
             for _ in $(seq 1 15); do
               if curl --fail --silent --max-time 2 "$local_origin/health" >/dev/null 2>&1; then
-                ready=1
+                local_ready=1
                 break
               fi
               sleep 1
             done
-            [ "$ready" -eq 1 ] || {
+            [ "$local_ready" -eq 1 ] || {
               echo "quick tunnel: local MCP health did not recover" >&2
               exit 1
             }
           fi
 
-          # Stop the previous quick-tunnel child recorded by this helper.
+          # Stop the helper-owned tunnel from a previous successful run.
           if [ -f "$pid_file" ]; then
             old_pid="$(cat "$pid_file" 2>/dev/null || true)"
             case "$old_pid" in
@@ -108,10 +110,10 @@
             esac
           fi
 
-          # Also stop a quick tunnel started manually before this helper existed.
+          # Also replace the manual Quick Tunnel used during runtime validation.
           # Named Cloudflare tunnels do not use --url and therefore do not match.
-          if command -v pgrep >/dev/null 2>&1; then
-            for old_pid in $(pgrep -f "cloudflared tunnel.*--url $local_origin" 2>/dev/null || true); do
+          if [ "$(uname -s)" = "Darwin" ]; then
+            for old_pid in $(/usr/bin/pgrep -f "cloudflared tunnel.*--url $local_origin" 2>/dev/null || true); do
               [ "$old_pid" = "$$" ] && continue
               kill "$old_pid" 2>/dev/null || true
             done
@@ -132,7 +134,7 @@
           cleanup_on_error=1
           cleanup() {
             status=$?
-            trap - EXIT INT TERM
+            trap - EXIT
             if [ "$cleanup_on_error" -eq 1 ]; then
               if kill -0 "$tunnel_pid" 2>/dev/null; then
                 kill "$tunnel_pid" 2>/dev/null || true
@@ -141,63 +143,64 @@
             fi
             exit "$status"
           }
-          trap cleanup EXIT INT TERM
+          trap cleanup EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
 
           quick_url=""
-          for _ in $(seq 1 ${toString cfg.waitSeconds}); do
+          registered=0
+          deadline=$((SECONDS + ${toString cfg.waitSeconds}))
+          while [ "$SECONDS" -lt "$deadline" ]; do
             if ! kill -0 "$tunnel_pid" 2>/dev/null; then
-              echo "quick tunnel: cloudflared exited before publishing a URL" >&2
-              tail -n 60 "$log_file" >&2 || true
+              echo "quick tunnel: cloudflared exited before becoming ready" >&2
+              tail -n 80 "$log_file" >&2 || true
               exit 1
             fi
 
-            quick_url="$(grep -Eo 'https://[A-Za-z0-9-]+\.trycloudflare\.com' "$log_file" | head -1 || true)"
-            [ -n "$quick_url" ] && break
+            if [ -z "$quick_url" ]; then
+              quick_url="$(grep -Eo 'https://[A-Za-z0-9-]+\.trycloudflare\.com' "$log_file" | head -1 || true)"
+            fi
+            if grep -q 'Registered tunnel connection.*protocol=http2' "$log_file"; then
+              registered=1
+            fi
+            if [ -n "$quick_url" ] && [ "$registered" -eq 1 ]; then
+              break
+            fi
             sleep 1
           done
 
           [ -n "$quick_url" ] || {
             echo "quick tunnel: timed out waiting for trycloudflare.com URL" >&2
-            tail -n 60 "$log_file" >&2 || true
+            tail -n 80 "$log_file" >&2 || true
             exit 1
           }
-
-          printf '%s\n' "$quick_url" >"$url_file"
-          chmod 600 "$url_file"
-
-          registered=0
-          for _ in $(seq 1 ${toString cfg.waitSeconds}); do
-            if grep -q 'Registered tunnel connection.*protocol=http2' "$log_file"; then
-              registered=1
-              break
-            fi
-            if ! kill -0 "$tunnel_pid" 2>/dev/null; then
-              break
-            fi
-            sleep 1
-          done
-
           [ "$registered" -eq 1 ] || {
             echo "quick tunnel: HTTP/2 tunnel did not register" >&2
             tail -n 80 "$log_file" >&2 || true
             exit 1
           }
 
+          printf '%s\n' "$quick_url" >"$url_file"
+          chmod 600 "$url_file"
+
           echo "quick tunnel: registered over HTTP/2"
 
-          # Quick Tunnel DNS can lag behind connector registration. Keep the
-          # same registered tunnel alive while waiting instead of creating a new
-          # hostname on every transient resolver miss.
+          # The proven manual flow waited about 20 seconds before its first
+          # lookup of the newly-issued trycloudflare.com hostname. Do the same
+          # here so we do not race DNS publication or seed a negative cache.
+          echo "quick tunnel: waiting ${toString cfg.publishGraceSeconds}s for public hostname publication"
+          sleep ${toString cfg.publishGraceSeconds}
+
           public_ready=0
-          deadline=$((SECONDS + ${toString cfg.publicReadySeconds}))
           last_code="000"
+          deadline=$((SECONDS + ${toString cfg.publicReadySeconds}))
           while [ "$SECONDS" -lt "$deadline" ]; do
             if ! kill -0 "$tunnel_pid" 2>/dev/null; then
               break
             fi
-            last_code="$(curl --silent --show-error --max-time 5 \
+            last_code="$(curl --silent --max-time 8 \
               --output /dev/null --write-out '%{http_code}' \
-              "$quick_url/health" || true)"
+              "$quick_url/health" 2>/dev/null || true)"
             case "$last_code" in
               200|421)
                 public_ready=1
@@ -205,7 +208,7 @@
                 break
                 ;;
             esac
-            sleep 1
+            sleep ${toString cfg.retryIntervalSeconds}
           done
 
           [ "$public_ready" -eq 1 ] || {
@@ -214,31 +217,27 @@
             exit 1
           }
 
-          # Require consecutive stable responses before changing Repo Harness.
+          # Require consecutive responses before changing Repo Harness state.
           stable=0
           deadline=$((SECONDS + ${toString cfg.publicReadySeconds}))
           while [ "$stable" -lt ${toString cfg.probeCount} ] && [ "$SECONDS" -lt "$deadline" ]; do
-            code="$(curl --silent --show-error --max-time 10 \
+            code="$(curl --silent --max-time 10 \
               --output /dev/null --write-out '%{http_code}' \
-              "$quick_url/health" || true)"
+              "$quick_url/health" 2>/dev/null || true)"
             case "$code" in
               200|421)
                 stable=$((stable + 1))
                 printf 'pre-bootstrap probe %02d: %s\n' "$stable" "$code"
                 ;;
               *)
-                if [ "$stable" -gt 0 ]; then
-                  echo "quick tunnel: public probe became unstable with HTTP $code; restarting stability count" >&2
-                fi
                 stable=0
                 ;;
             esac
-            sleep 1
+            sleep ${toString cfg.retryIntervalSeconds}
           done
 
           [ "$stable" -eq ${toString cfg.probeCount} ] || {
             echo "quick tunnel: public endpoint did not remain stable before bootstrap" >&2
-            tail -n 80 "$log_file" >&2 || true
             exit 1
           }
 
@@ -251,17 +250,21 @@
           fi
           "$restart"
 
-          public_ready=0
+          public_json=""
           deadline=$((SECONDS + ${toString cfg.publicReadySeconds}))
           while [ "$SECONDS" -lt "$deadline" ]; do
-            if curl --fail --silent --max-time 5 "$quick_url/health" >/dev/null 2>&1; then
-              public_ready=1
+            public_json="$(curl --fail --silent --max-time 8 "$quick_url/health" 2>/dev/null || true)"
+            if printf '%s\n' "$public_json" | jq -e \
+              --arg origin "$quick_url" \
+              '.status == "ok" and .public_origin == $origin' >/dev/null 2>&1
+            then
               break
             fi
-            sleep 1
+            public_json=""
+            sleep ${toString cfg.retryIntervalSeconds}
           done
-          [ "$public_ready" -eq 1 ] || {
-            echo "quick tunnel: public health did not become ready after bootstrap" >&2
+          [ -n "$public_json" ] || {
+            echo "quick tunnel: public MCP health did not become ready after bootstrap" >&2
             exit 1
           }
 
@@ -281,7 +284,7 @@
           printf 'ChatGPT MCP:   %s/mcp\n' "$quick_url"
           printf 'Tunnel log:    %s\n' "$log_file"
           echo
-          echo "ChatGPT must use this new /mcp URL. Reconnect/reauthorize after every Quick Tunnel hostname change."
+          echo "Next: update the ChatGPT app URL, click Sign in, copy the fresh /authorize URL, then run rh-mcp-auth."
         '';
       };
 
@@ -290,47 +293,37 @@
         runtimeInputs = with pkgs; [
           coreutils
           curl
-          gnugrep
           jq
+          gnused
         ];
         text = ''
           set -euo pipefail
 
-          local_origin=${escapeShellArg localOrigin}
-          log_file=${escapeShellArg logFile}
-          url_file=${escapeShellArg urlFile}
-          pid_file=${escapeShellArg pidFile}
+          config_file=${escapeShellArg configFile}
           health=${escapeShellArg healthBin}
           doctor=${escapeShellArg doctorBin}
 
           echo "=== local MCP ==="
           "$health"
 
-          [ -f "$url_file" ] || {
-            echo "quick tunnel: no saved URL; run rh-mcp-quick-restart" >&2
+          [ -f "$config_file" ] || {
+            echo "quick tunnel: Repo Harness config is missing: $config_file" >&2
             exit 1
           }
-          quick_url="$(cat "$url_file")"
-
-          [ -f "$pid_file" ] || {
-            echo "quick tunnel: no PID file; run rh-mcp-quick-restart" >&2
-            exit 1
-          }
-          tunnel_pid="$(cat "$pid_file")"
-          kill -0 "$tunnel_pid" 2>/dev/null || {
-            echo "quick tunnel: cloudflared process is not running" >&2
-            exit 1
-          }
-
-          grep -q 'Registered tunnel connection.*protocol=http2' "$log_file" || {
-            echo "quick tunnel: no successful HTTP/2 registration in log" >&2
-            exit 1
-          }
+          endpoint="$(jq -r '.chatgpt.endpoint // empty' "$config_file")"
+          case "$endpoint" in
+            https://*/mcp) ;;
+            *)
+              echo "quick tunnel: configured ChatGPT endpoint is invalid" >&2
+              exit 1
+              ;;
+          esac
+          public_origin="$(printf '%s\n' "$endpoint" | sed 's#/mcp$##')"
 
           echo "=== public MCP ==="
-          public_json="$(curl --fail --silent --show-error --max-time 10 "$quick_url/health")"
+          public_json="$(curl --fail --silent --show-error --max-time 10 "$public_origin/health")"
           printf '%s\n' "$public_json" | jq -e \
-            --arg origin "$quick_url" \
+            --arg origin "$public_origin" \
             '.status == "ok" and .public_origin == $origin' >/dev/null
           printf '%s\n' "$public_json" | jq '{status, profile, auth, public_origin}'
 
@@ -342,24 +335,32 @@
           ' >/dev/null
           printf '%s\n' "$doctor_json" | jq '{status, layers: [.layers[] | {name, ok}]}'
 
-          echo "=== tunnel ==="
-          printf 'pid: %s\n' "$tunnel_pid"
-          printf 'url: %s\n' "$quick_url"
-          grep -E 'Registered tunnel connection|TCP Connectivity.*PASS' "$log_file" | tail -n 6 || true
-
-          curl --fail --silent --max-time 5 "$local_origin/health" >/dev/null
+          echo "=== configured endpoint ==="
+          printf '%s\n' "$endpoint"
           echo "quick tunnel test passed"
         '';
       };
 
       quickUrl = pkgs.writeShellApplication {
         name = "repo-harness-mcp-quick-url";
-        runtimeInputs = with pkgs; [ coreutils ];
+        runtimeInputs = with pkgs; [ jq ];
         text = ''
           set -euo pipefail
+          config_file=${escapeShellArg configFile}
           url_file=${escapeShellArg urlFile}
+
+          if [ -f "$config_file" ]; then
+            endpoint="$(jq -r '.chatgpt.endpoint // empty' "$config_file")"
+            case "$endpoint" in
+              https://*/mcp)
+                printf '%s\n' "$endpoint"
+                exit 0
+                ;;
+            esac
+          fi
+
           [ -f "$url_file" ] || {
-            echo "quick tunnel: no saved URL; run rh-mcp-quick-restart" >&2
+            echo "quick tunnel: no configured or saved MCP URL" >&2
             exit 1
           }
           quick_url="$(cat "$url_file")"
@@ -398,8 +399,8 @@
             exit 1
           }
 
-          # The OAuth URL contains transaction state. Clear it from the clipboard
-          # as soon as it has been captured locally.
+          # OAuth transaction state is sensitive and short-lived. Clear the
+          # clipboard immediately after capturing it locally.
           printf '%s' "" | /usr/bin/pbcopy
 
           AUTH_URL="$auth_url" \
@@ -517,19 +518,31 @@ PY
         waitSeconds = mkOption {
           type = types.ints.between 10 120;
           default = 45;
-          description = "Maximum seconds to wait for Quick Tunnel URL and HTTP/2 registration.";
+          description = "Maximum seconds to wait for the generated URL and HTTP/2 registration.";
+        };
+
+        publishGraceSeconds = mkOption {
+          type = types.ints.between 0 120;
+          default = 20;
+          description = "Quiet delay after HTTP/2 registration before the first public hostname lookup.";
         };
 
         publicReadySeconds = mkOption {
           type = types.ints.between 10 300;
           default = 120;
-          description = "Maximum seconds to wait for a generated Quick Tunnel hostname to become reachable and stable.";
+          description = "Maximum seconds to wait for public health before and after Repo Harness bootstrap.";
+        };
+
+        retryIntervalSeconds = mkOption {
+          type = types.ints.between 1 30;
+          default = 5;
+          description = "Seconds between public hostname and health retries.";
         };
 
         probeCount = mkOption {
           type = types.ints.between 1 20;
           default = 5;
-          description = "Number of consecutive stable public health probes before updating Repo Harness.";
+          description = "Number of consecutive public responses required before changing Repo Harness state.";
         };
       };
 
@@ -567,9 +580,8 @@ PY
             run chmod 700 ${escapeShellArg cfg.stateDirectory}
           '';
 
-        # Point aliases directly at their generated store paths. This keeps the
-        # helpers usable after a standalone Home Manager activation even when
-        # the nix-darwin per-user profile has not been switched yet.
+        # Store-path aliases keep the helpers available after standalone Home
+        # Manager activation, even before nix-darwin updates the per-user profile.
         home.shellAliases = {
           rh-mcp-auth = "${chatgptAuth}/bin/repo-harness-mcp-chatgpt-auth";
           rh-mcp-quick-restart = "${quickRestart}/bin/repo-harness-mcp-quick-restart";
