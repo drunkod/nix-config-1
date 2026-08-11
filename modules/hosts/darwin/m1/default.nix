@@ -35,6 +35,7 @@ let
     config.flake.modules.homeManager.repo-harness
     config.flake.modules.homeManager.repo-harness-mcp
     config.flake.modules.homeManager.repo-harness-mcp-quick
+    # Keep the named-tunnel module available as an opt-in stable-domain path.
     config.flake.modules.homeManager.cloudflared-mcp-tunnel
     config.flake.modules.homeManager.codex
     config.flake.modules.homeManager."pi-coding-agent"
@@ -148,6 +149,9 @@ in
             autoStart = true;
           };
 
+          # Default public path: an ephemeral *.trycloudflare.com Quick Tunnel.
+          # No Cloudflare account, custom domain, tunnel UUID, or DNS setup is
+          # required. Use rh-mcp-quick-restart to create/replace the endpoint.
           repo-harness-mcp-quick = {
             enable = true;
             waitSeconds = 45;
@@ -157,12 +161,10 @@ in
             probeCount = 5;
           };
 
-          cloudflared-mcp-tunnel = {
-            enable = true;
-            localHost = "127.0.0.1";
-            localPort = 8765;
-            autoStart = true;
-          };
+          # Optional stable-domain path. The module remains imported so it can
+          # be enabled deliberately after Cloudflare login/tunnel/DNS setup,
+          # but m1-min does not start a named tunnel by default.
+          cloudflared-mcp-tunnel.enable = false;
         };
       };
   };
