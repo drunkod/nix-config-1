@@ -151,6 +151,9 @@ in
           repo-harness-mcp-quick = {
             enable = true;
             waitSeconds = 45;
+            publishGraceSeconds = 20;
+            publicReadySeconds = 120;
+            retryIntervalSeconds = 5;
             probeCount = 5;
           };
 
