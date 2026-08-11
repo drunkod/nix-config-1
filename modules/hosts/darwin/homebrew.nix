@@ -12,7 +12,7 @@
         enableBashIntegration = true;
         enableZshIntegration = true;
         onActivation = {
-          autoUpdate = true;
+          autoUpdate = false;
           upgrade = false;
           # TODO: switch back to `cleanup = "zap"` once nix-darwin emits
           # `--cleanup --zap` instead of the removed `--force-cleanup` flag.
