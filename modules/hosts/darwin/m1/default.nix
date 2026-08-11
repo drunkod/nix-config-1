@@ -34,6 +34,7 @@ let
   aiFullImports = aiCoreImports ++ [
     config.flake.modules.homeManager.repo-harness
     config.flake.modules.homeManager.repo-harness-mcp
+    config.flake.modules.homeManager.repo-harness-mcp-quick
     config.flake.modules.homeManager.cloudflared-mcp-tunnel
     config.flake.modules.homeManager.codex
     config.flake.modules.homeManager."pi-coding-agent"
@@ -145,6 +146,12 @@ in
             serverName = "repo-harness-coding";
             publicEndpoint = null;
             autoStart = true;
+          };
+
+          repo-harness-mcp-quick = {
+            enable = true;
+            waitSeconds = 45;
+            probeCount = 5;
           };
 
           cloudflared-mcp-tunnel = {
