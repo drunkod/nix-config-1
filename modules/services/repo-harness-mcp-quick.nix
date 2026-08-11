@@ -18,7 +18,6 @@
 
       cfg = config.services.repo-harness-mcp-quick;
       mcpCfg = config.services.repo-harness-mcp;
-      isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
       localUrlHost = if mcpCfg.host == "::1" then "[::1]" else mcpCfg.host;
       localOrigin = "http://${localUrlHost}:${toString mcpCfg.port}";
       runtimePath = "${config.home.homeDirectory}/.bun/bin:${config.home.profileDirectory}/bin:/usr/bin:/bin:/usr/sbin:/sbin";
@@ -96,7 +95,7 @@
           if [ -f "$pid_file" ]; then
             old_pid="$(cat "$pid_file" 2>/dev/null || true)"
             case "$old_pid" in
-              ''|*[!0-9]*) ;;
+              ""|*[!0-9]*) ;;
               *)
                 if kill -0 "$old_pid" 2>/dev/null; then
                   kill "$old_pid" 2>/dev/null || true
@@ -107,6 +106,16 @@
                 fi
                 ;;
             esac
+          fi
+
+          # Also stop a quick tunnel started manually before this helper existed.
+          # Named Cloudflare tunnels do not use --url and therefore do not match.
+          if command -v pgrep >/dev/null 2>&1; then
+            for old_pid in $(pgrep -f "cloudflared tunnel.*--url $local_origin" 2>/dev/null || true); do
+              [ "$old_pid" = "$$" ] && continue
+              kill "$old_pid" 2>/dev/null || true
+            done
+            sleep 1
           fi
 
           rm -f "$log_file" "$url_file" "$pid_file"
