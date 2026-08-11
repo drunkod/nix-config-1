@@ -344,7 +344,7 @@
 
           # The OAuth URL contains transaction state. Clear it from the clipboard
           # as soon as it has been captured locally.
-          printf '' | /usr/bin/pbcopy
+          printf '%s' "" | /usr/bin/pbcopy
 
           AUTH_URL="$auth_url" \
           PUBLIC_ORIGIN="$public_origin" \
