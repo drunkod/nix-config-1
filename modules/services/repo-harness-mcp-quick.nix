@@ -129,6 +129,20 @@
           printf '%s\n' "$tunnel_pid" >"$pid_file"
           chmod 600 "$pid_file"
 
+          cleanup_on_error=1
+          cleanup() {
+            status=$?
+            trap - EXIT INT TERM
+            if [ "$cleanup_on_error" -eq 1 ]; then
+              if kill -0 "$tunnel_pid" 2>/dev/null; then
+                kill "$tunnel_pid" 2>/dev/null || true
+              fi
+              rm -f "$url_file" "$pid_file"
+            fi
+            exit "$status"
+          }
+          trap cleanup EXIT INT TERM
+
           quick_url=""
           for _ in $(seq 1 ${toString cfg.waitSeconds}); do
             if ! kill -0 "$tunnel_pid" 2>/dev/null; then
@@ -171,24 +185,62 @@
 
           echo "quick tunnel: registered over HTTP/2"
 
-          # Before Repo Harness learns the new hostname, 421 is expected.
-          # 200 is also accepted when the same hostname is already configured.
-          for i in $(seq 1 ${toString cfg.probeCount}); do
+          # Quick Tunnel DNS can lag behind connector registration. Keep the
+          # same registered tunnel alive while waiting instead of creating a new
+          # hostname on every transient resolver miss.
+          public_ready=0
+          deadline=$((SECONDS + ${toString cfg.publicReadySeconds}))
+          last_code="000"
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            if ! kill -0 "$tunnel_pid" 2>/dev/null; then
+              break
+            fi
+            last_code="$(curl --silent --show-error --max-time 5 \
+              --output /dev/null --write-out '%{http_code}' \
+              "$quick_url/health" || true)"
+            case "$last_code" in
+              200|421)
+                public_ready=1
+                printf 'quick tunnel: public hostname ready (HTTP %s)\n' "$last_code"
+                break
+                ;;
+            esac
+            sleep 1
+          done
+
+          [ "$public_ready" -eq 1 ] || {
+            echo "quick tunnel: generated hostname did not become reachable; last HTTP code: $last_code" >&2
+            tail -n 80 "$log_file" >&2 || true
+            exit 1
+          }
+
+          # Require consecutive stable responses before changing Repo Harness.
+          stable=0
+          deadline=$((SECONDS + ${toString cfg.publicReadySeconds}))
+          while [ "$stable" -lt ${toString cfg.probeCount} ] && [ "$SECONDS" -lt "$deadline" ]; do
             code="$(curl --silent --show-error --max-time 10 \
               --output /dev/null --write-out '%{http_code}' \
               "$quick_url/health" || true)"
             case "$code" in
               200|421)
-                printf 'pre-bootstrap probe %02d: %s\n' "$i" "$code"
+                stable=$((stable + 1))
+                printf 'pre-bootstrap probe %02d: %s\n' "$stable" "$code"
                 ;;
               *)
-                echo "quick tunnel: public probe failed with HTTP $code" >&2
-                tail -n 80 "$log_file" >&2 || true
-                exit 1
+                if [ "$stable" -gt 0 ]; then
+                  echo "quick tunnel: public probe became unstable with HTTP $code; restarting stability count" >&2
+                fi
+                stable=0
                 ;;
             esac
             sleep 1
           done
+
+          [ "$stable" -eq ${toString cfg.probeCount} ] || {
+            echo "quick tunnel: public endpoint did not remain stable before bootstrap" >&2
+            tail -n 80 "$log_file" >&2 || true
+            exit 1
+          }
 
           "$bootstrap" \
             --repo "$repo" \
@@ -200,7 +252,8 @@
           "$restart"
 
           public_ready=0
-          for _ in $(seq 1 20); do
+          deadline=$((SECONDS + ${toString cfg.publicReadySeconds}))
+          while [ "$SECONDS" -lt "$deadline" ]; do
             if curl --fail --silent --max-time 5 "$quick_url/health" >/dev/null 2>&1; then
               public_ready=1
               break
@@ -218,6 +271,9 @@
             .status == "mcp_ready"
             and all(.layers[]; .ok == true)
           ' >/dev/null
+
+          cleanup_on_error=0
+          trap - EXIT INT TERM
 
           echo
           echo "Repo Harness Quick Tunnel ready"
@@ -464,10 +520,16 @@ PY
           description = "Maximum seconds to wait for Quick Tunnel URL and HTTP/2 registration.";
         };
 
+        publicReadySeconds = mkOption {
+          type = types.ints.between 10 300;
+          default = 120;
+          description = "Maximum seconds to wait for a generated Quick Tunnel hostname to become reachable and stable.";
+        };
+
         probeCount = mkOption {
           type = types.ints.between 1 20;
           default = 5;
-          description = "Number of stable public health probes before updating Repo Harness.";
+          description = "Number of consecutive stable public health probes before updating Repo Harness.";
         };
       };
 
@@ -505,11 +567,14 @@ PY
             run chmod 700 ${escapeShellArg cfg.stateDirectory}
           '';
 
+        # Point aliases directly at their generated store paths. This keeps the
+        # helpers usable after a standalone Home Manager activation even when
+        # the nix-darwin per-user profile has not been switched yet.
         home.shellAliases = {
-          rh-mcp-auth = "repo-harness-mcp-chatgpt-auth";
-          rh-mcp-quick-restart = "repo-harness-mcp-quick-restart";
-          rh-mcp-quick-test = "repo-harness-mcp-quick-test";
-          rh-mcp-quick-url = "repo-harness-mcp-quick-url";
+          rh-mcp-auth = "${chatgptAuth}/bin/repo-harness-mcp-chatgpt-auth";
+          rh-mcp-quick-restart = "${quickRestart}/bin/repo-harness-mcp-quick-restart";
+          rh-mcp-quick-test = "${quickTest}/bin/repo-harness-mcp-quick-test";
+          rh-mcp-quick-url = "${quickUrl}/bin/repo-harness-mcp-quick-url";
         };
       };
     };
