@@ -1,74 +1,96 @@
 # Repo Harness MCP coding profile on `m1-min`
 
-This runbook converts the upstream manual ChatGPT MCP `coding` tutorial into a
-reproducible `nix-darwin`/Home Manager configuration while preserving the
-security boundaries of Repo Harness.
+This runbook configures the Repo Harness `coding` profile on the Apple Silicon
+`m1-min` host with a loopback MCP server and a Cloudflare public endpoint.
+
+The **default path is now Cloudflare Quick Tunnel**:
+
+```text
+ChatGPT
+  -> OAuth HTTPS /mcp
+    -> https://<random>.trycloudflare.com/mcp
+      -> cloudflared --protocol http2
+        -> http://127.0.0.1:8765
+          -> Repo Harness coding profile
+            -> ~/nix-config
+```
+
+A Cloudflare account, custom domain, tunnel UUID, DNS route, and tunnel
+credential JSON are **not required** for the normal `m1-min` test workflow.
+
+The named-tunnel module remains imported but disabled. Enable it deliberately
+only when you want a stable custom hostname.
 
 ## Source authority
 
-The implementation was reconciled against:
+The implementation follows `drunkod/repo-harness` branch
+`agent/chatgpt-github-create-mvp`, including the ChatGPT MCP coding tutorial and
+the Quick Tunnel testing workflow.
 
-- `drunkod/repo-harness` branch `agent/chatgpt-github-create-mvp`;
-- commit `d66aeab6afd137032b6692b581b82b8177272131`;
-- `docs/repo-harness-chatgpt-mcp-setup.md`;
-- `docs/repo-harness-chatgpt-coding-mcp-tutorial.md`.
-
-The configuration repository base is
-`agent/use-repo-harness-chatgpt-create-mvp` at
-`e34b0626bad5b4a144bb7193c5ea61ba09eb0479`.
-
-## What Nix now owns
+## What Nix owns
 
 For `m1-min`, Home Manager owns:
 
-- `pkgs.cloudflared` and the existing Repo Harness launcher;
-- the loopback MCP launchd agent;
-- the Cloudflare Tunnel launchd agent;
-- restart, health, doctor, and bootstrap helpers;
-- runtime directories and log locations;
-- static assertions that reject a public MCP bind, an endpoint without `/mcp`,
-  an implicit repository grant, and runtime files in `/nix/store`;
-- `bash -n` and ShellCheck flake checks for the prototype scripts.
+- the existing Repo Harness launcher;
+- `cloudflared`;
+- the loopback Repo Harness MCP launchd agent;
+- the Quick Tunnel helpers;
+- the optional named-tunnel module, disabled by default;
+- restart, health, doctor, bootstrap, URL, and OAuth helper commands;
+- private runtime directories and logs;
+- static assertions that keep the coding server on loopback and runtime state
+  outside `/nix/store`.
 
-Nix does **not** create OAuth credentials, log into Cloudflare, create a tunnel,
-change DNS, or configure the ChatGPT developer-mode app.
+The default Quick Tunnel path does not require Nix to log into Cloudflare or
+manage DNS.
 
-## Four network values
+## Default versus optional public path
 
-Keep these values distinct:
+| Mode | Default | Public URL | Cloudflare account/domain required |
+|---|---:|---|---:|
+| Quick Tunnel | yes | `https://<random>.trycloudflare.com/mcp` | no |
+| Named tunnel | no | `https://mcp.example.com/mcp` | yes |
 
-| Name | Example | Owner |
-|---|---|---|
-| Local origin | `http://127.0.0.1:8765` | `services.repo-harness-mcp` |
-| Tunnel upstream | `http://127.0.0.1:8765` | generated runtime cloudflared YAML |
-| Public origin | `https://mcp.example.com` | Cloudflare DNS/tunnel |
-| ChatGPT MCP URL | `https://mcp.example.com/mcp` | Repo Harness setup and ChatGPT app |
+Quick Tunnel hostnames are ephemeral. Replacing the tunnel produces a new URL,
+so the ChatGPT app must be updated and authorized again.
 
-Only the last value is passed to `repo-harness mcp setup chatgpt`. The public
-origin must not include `/mcp`; the ChatGPT MCP URL must include it.
+A named tunnel is optional and useful only when a stable URL is worth the extra
+Cloudflare account, DNS, and credential management.
 
 ## Apply `m1-min`
 
-The host expects the configuration checkout at `~/nix-config`. Change
-`services.repo-harness-mcp.repoPath` in the host module when the checkout lives
-elsewhere.
+The configuration expects the checkout at `~/nix-config`.
 
 ```bash
 cd ~/nix-config
-nix flake check
+nix flake check -L --show-trace
 sudo darwin-rebuild build --flake .#m1-min
+```
+
+For a full activation:
+
+```bash
 sudo darwin-rebuild switch --flake .#m1-min
 exec zsh
 ```
 
-Install or refresh the upstream CLI through the existing module:
+When an unrelated nix-darwin activation phase blocks testing, activate only the
+Home Manager package:
+
+```bash
+nix build \
+  .#darwinConfigurations.m1-min.config.home-manager.users.test.home.activationPackage
+
+./result/activate
+exec zsh
+```
+
+Install or refresh the upstream CLI through the existing module when needed:
 
 ```bash
 rh-bootstrap
 repo-harness --version
 ```
-
-No second Repo Harness installation is introduced by the MCP modules.
 
 ## Adopt the target repository
 
@@ -80,7 +102,7 @@ scripts/repo-harness-mcp/20-initialize-repo-harness.sh \
   --dry-run
 ```
 
-Apply only after reviewing the generated contract:
+Apply only after reviewing the generated repository contract:
 
 ```bash
 scripts/repo-harness-mcp/20-initialize-repo-harness.sh \
@@ -88,160 +110,239 @@ scripts/repo-harness-mcp/20-initialize-repo-harness.sh \
   --apply
 ```
 
-## Create the named Cloudflare Tunnel
+## Default Quick Tunnel workflow
 
-These are external, interactive operations and are not run by activation:
+The normal operator command is:
+
+```bash
+rh-mcp-quick-restart
+```
+
+It performs the proven runtime sequence:
+
+1. require or recover local MCP health;
+2. stop the previous matching Quick Tunnel;
+3. start `cloudflared tunnel --protocol http2`;
+4. capture the generated `*.trycloudflare.com` URL;
+5. require `Registered tunnel connection ... protocol=http2`;
+6. wait 20 seconds before the first lookup of the new hostname;
+7. require five consecutive public `200` or pre-bootstrap `421` responses;
+8. bootstrap Repo Harness with `<quick-url>/mcp`;
+9. restart the local MCP service;
+10. require the public health response to advertise the same `public_origin`;
+11. require the live doctor to reach `mcp_ready`.
+
+The 20-second quiet publication grace is intentional. Runtime validation showed
+that immediately querying a newly-issued Quick Tunnel hostname can race DNS
+publication and seed a negative resolver cache.
+
+Successful output ends with:
+
+```text
+Repo Harness Quick Tunnel ready
+Public origin: https://<random>.trycloudflare.com
+ChatGPT MCP:   https://<random>.trycloudflare.com/mcp
+```
+
+## Test and print the active URL
+
+The authoritative configured URL is:
+
+```bash
+rh-mcp-quick-url
+```
+
+Run the full non-mutating check:
+
+```bash
+rh-mcp-quick-test
+```
+
+It requires:
+
+```text
+local MCP health       PASS
+public MCP health      PASS
+public_origin match    PASS
+OAuth discovery        PASS
+config_ready           PASS
+local_ready            PASS
+tunnel_ready           PASS
+oauth_ready            PASS
+mcp_ready              PASS
+```
+
+Unlike the original helper, `rh-mcp-quick-test` reads the authoritative endpoint
+from `~/.repo-harness/mcp.local.json`, so it can also validate a currently
+working manually-created Quick Tunnel.
+
+## Configure ChatGPT
+
+After `rh-mcp-quick-restart`, copy the exact value from:
+
+```bash
+rh-mcp-quick-url
+```
+
+Use it as the ChatGPT developer-mode MCP URL and keep authentication set to
+OAuth.
+
+When the Quick Tunnel hostname changes, update the ChatGPT app URL before
+reauthorizing.
+
+## OAuth helper
+
+Click **Sign in with Repo Harness Coding** in ChatGPT.
+
+When the fresh Repo Harness `/authorize?...` page opens:
+
+1. do not submit the browser form;
+2. press `Cmd+L`;
+3. press `Cmd+C`;
+4. run:
+
+```bash
+rh-mcp-auth
+```
+
+The helper:
+
+- reads the fresh authorization URL from the macOS clipboard;
+- clears the clipboard immediately;
+- validates that the authorization host matches the current Repo Harness
+  `public_origin`;
+- requires OAuth authorization-code flow with PKCE `S256`;
+- requires the callback host to be `chatgpt.com`;
+- reads the local OAuth passphrase without printing it;
+- submits `/authorize` with `Origin: https://chatgpt.com`;
+- requires a `302` or `303` callback;
+- opens the validated ChatGPT callback.
+
+Expected output:
+
+```text
+Authorization HTTP status: 302
+OAuth accepted; opening ChatGPT callback
+```
+
+Never paste the live `/authorize` URL, callback URL, passphrase, authorization
+code, or tokens into chat or Git.
+
+## ChatGPT read-only canary
+
+After OAuth succeeds, start a new ChatGPT conversation:
+
+```text
+Use Repo Harness Coding and call harness_status.
+Do not call any other tool.
+Do not modify anything and do not run shell commands.
+```
+
+Require a visible `Called tool` event.
+
+Then:
+
+```text
+Use Repo Harness Coding and call harness_doctor.
+Do not call any other tool.
+Do not modify anything and do not run shell commands.
+```
+
+A local `mcp_ready` doctor proves transport/schema readiness. The visible
+ChatGPT tool event separately proves actual app invocation.
+
+Only after both are green should `open_workspace`, `read`, `apply_patch`, or
+`exec_command` be tested.
+
+## Runtime state
+
+Quick Tunnel state is private and local:
+
+```text
+~/.local/state/repo-harness-mcp-quick/
+├── cloudflared.log
+├── cloudflared.pid
+└── public-url
+```
+
+Repo Harness mutable OAuth/config state remains under:
+
+```text
+~/.repo-harness/
+```
+
+Do not commit those files.
+
+## Optional: stable custom Cloudflare hostname
+
+The named-tunnel module remains available but is disabled by default:
+
+```nix
+services.cloudflared-mcp-tunnel.enable = false;
+```
+
+To opt into a stable hostname, first perform the external Cloudflare account
+operations:
 
 ```bash
 scripts/repo-harness-mcp/60-cloudflare-login.sh
+
 scripts/repo-harness-mcp/70-cloudflare-create-tunnel.sh \
   --name repo-harness-coding
+
 scripts/repo-harness-mcp/80-cloudflare-configure-dns.sh \
   --tunnel <tunnel-uuid> \
-  --hostname <stable-hostname>
+  --hostname mcp.example.com
 ```
 
-The DNS script does not request overwrite behavior. A conflicting hostname
-therefore fails closed and must be resolved deliberately in Cloudflare.
-
-Create the local runtime parameter file used by the launchd agent:
+Then initialize the local named-tunnel runtime state:
 
 ```bash
 rh-cloudflared-mcp-init \
   --tunnel-id <tunnel-uuid> \
-  --hostname <stable-hostname> \
+  --hostname mcp.example.com \
   --credentials-file "$HOME/.cloudflared/<tunnel-uuid>.json" \
   --dry-run
 
 rh-cloudflared-mcp-init \
   --tunnel-id <tunnel-uuid> \
-  --hostname <stable-hostname> \
+  --hostname mcp.example.com \
   --credentials-file "$HOME/.cloudflared/<tunnel-uuid>.json"
 ```
 
-The helper stores only the UUID, hostname, and credentials **path** in
-`~/.config/repo-harness/cloudflared-mcp.env`. The credentials JSON remains in
-`~/.cloudflared` and is never copied into Git or the Nix store. The launchd
-runner generates `~/.config/cloudflared/repo-harness-mcp.yml` at runtime with
-mode `0600`.
+Enable the module deliberately in the host configuration:
 
-The existing `services.sops` module remains the approved secret mechanism. If
-you later encrypt the tunnel credentials with sops-nix, pass the materialized
-`config.sops.secrets.<name>.path` to `--credentials-file`; never place decrypted
-JSON or a tunnel token in a normal Nix string. The native `~/.cloudflared` file
-is the bootstrap-compatible default, not a second committed secret store.
+```nix
+services.cloudflared-mcp-tunnel = {
+  enable = true;
+  localHost = "127.0.0.1";
+  localPort = 8765;
+  autoStart = true;
+};
+```
 
-## Configure the Repo Harness coding profile
-
-Preview the exact setup command:
+Bootstrap Repo Harness with the stable URL:
 
 ```bash
 rh-mcp-bootstrap \
   --repo ~/nix-config \
-  --endpoint https://<stable-hostname>/mcp \
-  --dry-run
+  --endpoint https://mcp.example.com/mcp
 ```
 
-Apply it:
+Then use the named-tunnel restart helper instead of the Quick Tunnel helper.
 
-```bash
-rh-mcp-bootstrap \
-  --repo ~/nix-config \
-  --endpoint https://<stable-hostname>/mcp
-```
-
-This always supplies all of the fail-closed coding inputs:
-
-```text
---scope user
---profile coding
---grant-read-write <exact repo path>
---host 127.0.0.1
---port 8765
---auth oauth (at serve time)
-```
-
-Read the OAuth passphrase locally and paste it directly into the ChatGPT
-authorization page. Do not paste it into chat or commit it:
-
-```bash
-jq -r .passphrase ~/.repo-harness/mcp.oauth.json
-```
-
-## Start and verify services
-
-After local bootstrap files exist:
-
-```bash
-rh-mcp-restart
-rh-mcp-health
-rh-cloudflared-mcp-restart
-rh-mcp-doctor
-```
-
-Logs:
-
-```text
-~/.local/state/repo-harness-mcp/
-~/.local/state/cloudflared-mcp-tunnel/
-```
-
-The tunnel runner waits for the local `/health` endpoint before starting.
-Repo Harness remains bound to loopback; Cloudflare is the only public ingress.
-
-## Configure the ChatGPT app manually
-
-In ChatGPT Developer mode:
-
-1. Create or refresh the app named `repo-harness-coding`.
-2. Use `https://<stable-hostname>/mcp`.
-3. Select OAuth.
-4. Enter the local passphrase directly in the authorization page.
-5. Keep confirmation enabled for writes and shell commands.
-6. Refresh the schema and start a new chat.
-
-A successful local doctor is not proof of ChatGPT invocation. Require a visible
-`Called tool` event for `open_workspace`/`read` before any mutation test.
-
-## Smoke test
-
-Local checks:
-
-```bash
-scripts/repo-harness-mcp/130-run-coding-profile-smoke-test.sh \
-  --repo ~/nix-config
-```
-
-Then use the upstream read-only ChatGPT prompt: discover the exact repo,
-`open_workspace` in `worktree` mode from an approved base, read instructions
-and `README.md`, and stop without editing or running shell commands.
-
-Only after that succeeds should a harmless file under `tasks/notes/` be created.
-Do not commit or push during the first exercise.
-
-## Deterministic versus manual operations
-
-| Operation | Classification | Implementation |
-|---|---|---|
-| Packages, wrapper commands, service definitions | Deterministic | Nix/Home Manager |
-| Loopback host, port, profile and explicit repo path | Deterministic | Nix options/assertions |
-| Runtime directories and logs | Deterministic | Home Manager activation |
-| OAuth passphrase/token generation | Local mutable state | `rh-mcp-bootstrap` |
-| Cloudflare browser login | Interactive external | script `60` |
-| Tunnel creation | External account mutation | script `70` |
-| DNS route | External DNS mutation | script `80` |
-| Tunnel UUID/hostname selection | Local operator state | `rh-cloudflared-mcp-init` |
-| ChatGPT app creation/authorization | Manual external UI | this runbook |
+Treat `cert.pem` and the named-tunnel credential JSON as secrets. They remain
+outside Git and `/nix/store`.
 
 ## Rollback
 
-Nix rollback restores the previous launchd definitions:
+Nix rollback restores the previous service definitions:
 
 ```bash
 sudo darwin-rebuild --rollback
 ```
 
-For a safe local preview:
+For local Repo Harness cleanup/revocation preview:
 
 ```bash
 scripts/repo-harness-mcp/140-cleanup-or-rollback.sh \
@@ -251,5 +352,5 @@ scripts/repo-harness-mcp/140-cleanup-or-rollback.sh \
   --dry-run
 ```
 
-Apply only the selected local actions with `--apply`. The script never deletes
-Cloudflare tunnels, DNS records, login certificates, or credentials.
+The rollback helper does not delete external Cloudflare tunnels, DNS records,
+login certificates, or credential JSON.
