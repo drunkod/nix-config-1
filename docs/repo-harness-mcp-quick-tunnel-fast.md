@@ -1,10 +1,15 @@
 # Fast Repo Harness MCP Quick Tunnel workflow
 
-This is the short operator path for the `m1-min` Repo Harness `coding` MCP when
-a stable Cloudflare hostname is not available.
+This is the **default** operator path for the `m1-min` Repo Harness `coding`
+MCP. It uses an ephemeral `*.trycloudflare.com` Quick Tunnel and requires no
+Cloudflare account, custom domain, tunnel UUID, DNS route, or tunnel credential
+file.
 
-It complements the named-tunnel setup in
-[`repo-harness-mcp-coding-m1-min.md`](repo-harness-mcp-coding-m1-min.md).
+A named Cloudflare tunnel is optional and should be enabled only when a stable
+custom hostname is worth the extra account/DNS/credential management. See
+[`repo-harness-mcp-coding-m1-min.md`](repo-harness-mcp-coding-m1-min.md) for that
+opt-in path.
+
 Quick Tunnel hostnames are ephemeral, so a tunnel replacement changes the
 ChatGPT MCP URL and requires reconnecting/reauthorizing the ChatGPT app.
 
@@ -89,6 +94,12 @@ services.repo-harness-mcp-quick = {
   retryIntervalSeconds = 5;
   probeCount = 5;
 };
+```
+
+The stable-domain module is imported but disabled by default:
+
+```nix
+services.cloudflared-mcp-tunnel.enable = false;
 ```
 
 Successful output ends with:
@@ -249,3 +260,12 @@ repo-harness-mcp-doctor
 
 The fallback intentionally retains the same 20-second quiet publication delay
 that succeeded during target-Mac validation.
+
+## Optional stable hostname
+
+If you later want `https://mcp.example.com/mcp` instead of an ephemeral
+`trycloudflare.com` URL, opt into the named-tunnel module and follow the stable
+hostname section in `repo-harness-mcp-coding-m1-min.md`.
+
+Do not enable both paths accidentally. Quick Tunnel remains the default testing
+and development path.
