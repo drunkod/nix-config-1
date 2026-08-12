@@ -56,7 +56,7 @@
             command = server.command;
             args = server.args or [ ];
             env = server.env or { };
-          }) config.programs.mcp.servers;
+          }) (lib.removeAttrs config.programs.mcp.servers [ "codewebchat" ]);
         }
       );
     };
