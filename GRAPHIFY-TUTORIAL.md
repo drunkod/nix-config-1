@@ -2,9 +2,7 @@
 
 The canonical, tested Graphify guide for the default `m1-min` profile is:
 
-```text
-docs/graphify-new-repository.md
-```
+[`docs/tools/graphify.md`](docs/tools/graphify.md)
 
 Use that document for:
 
@@ -34,5 +32,5 @@ The default safety invariant is:
 > repository or worktree.
 
 Do not duplicate operational instructions in this file. Update
-`docs/graphify-new-repository.md` when the pinned Graphify revision or wrapper
+`docs/tools/graphify.md` when the pinned Graphify revision or wrapper
 behavior changes.

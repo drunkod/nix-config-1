@@ -3,7 +3,8 @@
 Use Planner when ChatGPT should inspect workflow state and write planning/handoff
 artifacts, but should not receive direct Coding MCP application-file/shell tools.
 Planner can write approved workflow artifacts such as PRDs, sprints, plans,
-goals, handoff notes, and check evidence.
+goals, handoff notes, and check evidence. Shared rules:
+[`Repo Harness safety`](../safety.md).
 
 ## 1. Adopt the repository
 
@@ -43,7 +44,7 @@ concurrent-server command.
 
 For Coding connector planning, run the normal five-layer Coding doctor and then
 call only planning tools. For Browser Engine, follow
-[`repo-harness-browser-engine-quick.md`](repo-harness-browser-engine-quick.md).
+the [Browser Engine quick tutorial](browser-engine.md).
 
 ## 4. First canary
 
@@ -64,5 +65,4 @@ not completely read-only.
 
 ## Stop
 
-Stop the foreground server with `Ctrl+C`. OAuth/config state remains under
-`~/.repo-harness` and must never be committed.
+Stop the foreground server with `Ctrl+C`.

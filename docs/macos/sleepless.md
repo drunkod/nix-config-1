@@ -1,5 +1,7 @@
 # Sleepless on macOS with nix-darwin
 
+[macOS integrations](README.md) · [Documentation index](../README.md)
+
 This repository provides a reusable `sleepless` Darwin module that installs the open-source [Sleepless](https://github.com/Aboudjem/Sleepless) menu-bar app and grants only the two privileged `pmset` commands it needs.
 
 Sleepless keeps a MacBook running with the lid closed. The current upstream Homebrew cask requires macOS Tahoe 26 or newer.

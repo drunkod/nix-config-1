@@ -1,6 +1,6 @@
 # Fast Repo Harness MCP Quick Tunnel workflow
 
-> Specialist reference. For normal onboarding and daily work, start with [`repo-harness-01-onboard-repository.md`](repo-harness-01-onboard-repository.md) and [`repo-harness-03-start-quick-tunnel.md`](repo-harness-03-start-quick-tunnel.md). Use this document when operating or diagnosing the tunnel itself.
+> Specialist reference. For normal onboarding and daily work, start with [guide 1](../guides/01-onboard-repository.md) and [guide 3](../guides/03-start-coding-mcp-quick-tunnel.md). Use this document when operating or diagnosing the tunnel itself. Shared rules: [`Repo Harness safety`](../safety.md).
 
 This is the **default** operator path for the `m1-min` Repo Harness `coding`
 MCP. It uses an ephemeral `*.trycloudflare.com` Quick Tunnel and requires no
@@ -9,7 +9,7 @@ file.
 
 A named Cloudflare tunnel is optional and should be enabled only when a stable
 custom hostname is worth the extra account/DNS/credential management. See
-[`repo-harness-mcp-coding-m1-min.md`](repo-harness-mcp-coding-m1-min.md) for that
+the [`m1-min` Coding MCP reference](m1-min-coding-mcp.md) for that
 opt-in path.
 
 Quick Tunnel hostnames are ephemeral, so a tunnel replacement changes the
@@ -200,8 +200,6 @@ The helper:
 - requires a `302` or `303` redirect;
 - validates and opens only a `https://chatgpt.com` callback.
 
-Never paste the fresh authorization URL, callback URL, passphrase,
-authorization code, or tokens into chat or commit them.
 
 ## ChatGPT canary
 
@@ -266,8 +264,8 @@ that succeeded during target-Mac validation.
 ## Optional stable hostname
 
 If you later want `https://mcp.example.com/mcp` instead of an ephemeral
-`trycloudflare.com` URL, opt into the named-tunnel module and follow the stable
-hostname section in `repo-harness-mcp-coding-m1-min.md`.
+`trycloudflare.com` URL, opt into the named-tunnel module and follow the stable hostname section in the
+[`m1-min` Coding MCP reference](m1-min-coding-mcp.md).
 
 Do not enable both paths accidentally. Quick Tunnel remains the default testing
 and development path.

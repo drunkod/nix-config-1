@@ -1,5 +1,7 @@
 # Graphify workflow for `m1-min`
 
+[Code-intelligence tools](README.md) · [Documentation index](../README.md)
+
 This is the canonical Graphify guide for this repository. It reflects the
 current Nix implementation and the Graphify revision pinned by `flake.lock`:
 

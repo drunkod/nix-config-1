@@ -2,6 +2,7 @@
 
 Use this guide when you have a Git repository on the `m1-min` Mac and want
 Repo Harness to read or modify it through the existing Coding MCP service.
+Shared rules: [`Repo Harness safety`](../safety.md).
 
 This guide is the default starting point. Do not begin with the Browser Engine,
 named Cloudflare tunnels, Graphify, or the full strict workflow. Initialize
@@ -58,7 +59,7 @@ repo-harness --version
 ```
 
 If the Nix helpers are missing, activate the `m1-min` configuration before
-continuing. See [`repo-harness-mcp-coding-m1-min.md`](repo-harness-mcp-coding-m1-min.md).
+continuing. See the [`m1-min` Coding MCP reference](../reference/m1-min-coding-mcp.md).
 
 ## Step 1: prepare the target repository
 
@@ -77,9 +78,8 @@ git init
 git status --short --branch
 ```
 
-First create a project-appropriate `.gitignore`, review every untracked path,
-and scan for secrets. Stage explicit reviewed paths rather than using
-`git add -A` blindly:
+First create a project-appropriate `.gitignore` and review every untracked path.
+Stage explicit reviewed paths:
 
 ```bash
 git add README.md .gitignore path/to/reviewed/source
@@ -99,8 +99,6 @@ git rev-parse --show-toplevel
 git rev-parse HEAD
 ```
 
-Stop if secrets, credentials, private operations files, or unrelated generated
-trees are present in the repository surface.
 
 ## Step 2: define the read boundary
 
@@ -121,12 +119,8 @@ _ops/
 .repo-harness/
 ```
 
-Do not blindly copy this sample. Add every sensitive path used by the project.
-If the repository cannot be made safe to expose, do not register it.
-
-Coding file tools also deny traversal, absolute paths, `.git/**`, secret/key
-paths, `_ops/**`, `_ref/**`, and symlink escapes. These checks are additional
-defenses, not a replacement for a correct `.ignore`.
+Adapt this sample to the project. The shared safety guide explains why
+`.gitignore` and code indexes do not replace `.ignore`.
 
 ## Step 3: preview repository adoption
 
@@ -167,9 +161,7 @@ as `read_only`. That read registration occurs before you commit the generated
 adoption files. If an already-authorized connector is running, assume the
 repository may become discoverable immediately after `init` succeeds.
 
-Therefore, complete `.ignore` and secret review before applying initialization,
-stop the connector while reviewing adoption when practical, and do not apply
-`init` to a repository that is not yet safe for read-only exposure.
+Therefore, complete `.ignore` review before applying initialization.
 
 For the normal full repository contract:
 
@@ -246,6 +238,12 @@ git worktree remove ../REPOSITORY-adoption-check
 For minimal adoption, record the known strict-check failure rather than claiming
 it passed.
 
+### Build context after adoption
+
+After adoption is committed, use the
+[context-packet recipe](../../developer-recipes/01-context-packet.md). It owns the
+Gitingest, CodeGraph, Graphify, ChatGPT-surface, and cleanup steps.
+
 ## Step 6: choose access mode
 
 After `init`, confirm or explicitly reset the automatic registration to
@@ -292,11 +290,11 @@ refresh the MCP setup and ChatGPT OAuth in guide 3.
 
 Only after repository access works should you add code indexes.
 
-- Continue with [`repo-harness-02-initialize-codegraph.md`](repo-harness-02-initialize-codegraph.md).
+- Continue with [guide 2: initialize CodeGraph](02-initialize-codegraph.md).
 - CodeGraph is installed declaratively by `nix-config`; do not run imperative
   `codegraph install` or `codegraph upgrade` over it.
 - Graphify uses one separate graph per repository/worktree. Follow
-  [`graphify-new-repository.md`](graphify-new-repository.md).
+  [`graphify-new-repository.md`](../../tools/graphify.md).
 - Neither tool grants Repo Harness access or replaces `.ignore` and path checks.
 
 ## Onboarding completion checklist
@@ -313,4 +311,4 @@ Only after repository access works should you add code indexes.
 [ ] exact adoption commit SHA is available for open_workspace
 ```
 
-Continue with [`repo-harness-02-initialize-codegraph.md`](repo-harness-02-initialize-codegraph.md).
+Continue with [guide 2: initialize CodeGraph](02-initialize-codegraph.md).

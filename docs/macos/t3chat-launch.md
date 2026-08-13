@@ -1,6 +1,11 @@
 # Integrate `t3chat-macos-launch` into `m1-min`
 
-This guide shows how to wire the `pp-t3` / ProxyPilot t3.chat launcher into the `m1-min` profile in this Nix configuration.
+[macOS integrations](README.md) · [Documentation index](../README.md)
+
+This guide is the narrative authority for wiring the `pp-t3` / ProxyPilot
+t3.chat launcher into the `m1-min` profile. The
+[complete example bundle](../examples/t3chat-macos-launch-m1-min/README.md) is a
+version-sensitive snapshot for comparison, not a second procedure.
 
 Target branch and profile:
 

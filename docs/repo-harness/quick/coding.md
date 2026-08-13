@@ -1,7 +1,7 @@
 # Repo Harness Coding MCP: short tutorial
 
 Use Coding when ChatGPT must edit an adopted repository through an isolated
-managed worktree.
+managed worktree. Shared rules: [`Repo Harness safety`](../safety.md).
 
 ## 1. Adopt and commit
 
@@ -82,7 +82,6 @@ OAuth, copy the fresh `/authorize?...` URL, then run:
 repo-harness-mcp-chatgpt-auth
 ```
 
-Never paste OAuth or endpoint values into chat or Git.
 
 ## 6. Visible canaries
 
@@ -135,8 +134,7 @@ mutation; initialize/sync the index separately.
 Keep edits bounded. Commit, push, PR creation, and merge are separate approvals.
 
 Repo Harness can create untracked evidence under `.ai/harness/mcp/` inside the
-managed worktree. Review filenames and remove only confirmed generated evidence
-before normal cleanup; never use broad `git clean` or forced worktree deletion.
+managed worktree. Cleanup is conservative; follow the shared safety guide.
 
 ```bash
 repo-harness mcp workspaces cleanup --workspace-id <id> --json

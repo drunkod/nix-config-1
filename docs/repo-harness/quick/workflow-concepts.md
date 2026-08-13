@@ -1,5 +1,7 @@
 # Repo Harness workflow concepts on installed `0.12.0`
 
+Shared rules: [`Repo Harness safety`](../safety.md).
+
 The public website describes the desired model:
 
 ```text

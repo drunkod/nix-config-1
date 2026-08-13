@@ -3,7 +3,8 @@
 Use this guide after the repository is adopted and committed. CodeGraph is
 optional semantic navigation and post-mutation indexing. It is not a Repo
 Harness authorization boundary and does not replace `.ignore` or managed
-workspace containment.
+workspace containment. Shared rules:
+[`Repo Harness safety`](../safety.md).
 
 ## What Nix already owns
 
@@ -209,5 +210,5 @@ workspace.
 [ ] failed index refresh never causes a repeated source mutation
 ```
 
-Continue with [`repo-harness-03-start-quick-tunnel.md`](repo-harness-03-start-quick-tunnel.md).
-For detailed CodeGraph behavior, see [`codegraph-workflow.md`](codegraph-workflow.md).
+Continue with [guide 3: start Coding MCP and Quick Tunnel](03-start-coding-mcp-quick-tunnel.md).
+For detailed behavior, see the [CodeGraph workflow](../../tools/codegraph.md).

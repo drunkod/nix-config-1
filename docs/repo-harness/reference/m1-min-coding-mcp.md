@@ -1,6 +1,6 @@
 # Repo Harness MCP coding profile on `m1-min`
 
-> Specialist reference. Start with [`repo-harness-01-onboard-repository.md`](repo-harness-01-onboard-repository.md), [`repo-harness-02-initialize-codegraph.md`](repo-harness-02-initialize-codegraph.md), and [`repo-harness-03-start-quick-tunnel.md`](repo-harness-03-start-quick-tunnel.md). Use this document for implementation and target-Mac validation details.
+> Specialist reference. Start with the [canonical numbered guides](../README.md#canonical-guides). Use this document for implementation and target-Mac validation details. Shared rules: [`Repo Harness safety`](../safety.md).
 
 This runbook configures the Repo Harness `coding` profile on the Apple Silicon
 `m1-min` host with a loopback MCP server and a Cloudflare public endpoint.
@@ -182,13 +182,13 @@ Allowed:
 - open managed workspaces from an exact commit SHA;
 - test a harmless read, patch, targeted command, and diff;
 - verify that `../outside` traversal is rejected;
-- remove the disposable worktree after preserving non-secret evidence.
+- remove the disposable worktree after preserving required evidence.
 
 Prohibited:
 
 - do not grant `/Users/test`, `/tmp`, `/`, or another broad parent directory;
 - do not expose port `8765` on `0.0.0.0` or a LAN interface;
-- do not commit `~/.repo-harness`, OAuth URLs, passphrases, codes, or tokens;
+
 - do not hand-edit authorization revisions in Repo Harness state;
 - do not run imperative CodeGraph installers over the Nix-managed installation;
 - do not treat CodeGraph indexing as a prerequisite for the MCP coding MVP;
@@ -359,8 +359,6 @@ Authorization HTTP status: 302
 OAuth accepted; opening ChatGPT callback
 ```
 
-Never paste the live `/authorize` URL, callback URL, passphrase, authorization
-code, or tokens into chat or Git.
 
 ## ChatGPT read-only canary
 
@@ -405,7 +403,6 @@ Repo Harness mutable OAuth/config state remains under:
 ~/.repo-harness/
 ```
 
-Do not commit those files.
 
 ## Optional: stable custom Cloudflare hostname
 

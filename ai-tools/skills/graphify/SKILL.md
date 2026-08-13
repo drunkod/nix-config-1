@@ -162,4 +162,4 @@ Load only the relevant, version-scoped sidecar:
 - `references/extraction-spec.md` — supported extraction contract;
 - `references/hooks.md` — opt-in Git/agent hook behavior.
 
-The canonical user guide is `docs/graphify-new-repository.md`.
+The canonical user guide is `docs/tools/graphify.md`.

@@ -2,7 +2,7 @@
 
 Use this guide after the repository is adopted, committed, and explicitly
 registered. It describes the normal work loop, not installation or emergency
-recovery.
+recovery. Shared rules: [`Repo Harness safety`](../safety.md).
 
 ## Default operating model
 
@@ -94,8 +94,7 @@ case "$REPO_ID" in
 esac
 ```
 
-Share only that one `repo_id` when necessary. Never paste or attach the complete
-registry.
+Use only that exact `repo_id` for the workspace request.
 
 ## Step 4: choose an exact base
 
@@ -218,15 +217,8 @@ Recommended sequence:
 read -> apply_patch -> targeted test -> git status -> git diff
 ```
 
-Shell safety:
-
-- commands run with local-user authority and may leave the repository;
-- do not use shell commands to bypass a file-tool denial;
-- do not read credentials, browser state, OAuth state, `_ops`, or unrelated
-  repositories;
-- avoid destructive Git commands;
-- do not start indefinite servers or watchers without an explicit need;
-- do not install global tools over Nix-managed state.
+Approve only the exact commands required by the task; general command and Git
+rules are centralized in the shared safety guide.
 
 A mutation may succeed even if CodeGraph refresh fails. Do not repeat the write
 just to repair indexing. Refresh the index separately.
@@ -288,7 +280,6 @@ Cleanup refuses dirty or unmerged worktrees. First choose one:
 - explicitly discard the work through a safe local Git operation;
 - leave the workspace intact for later inspection.
 
-Never force-clean a workspace merely to make a status command green.
 
 ## Daily checklist
 
@@ -309,4 +300,4 @@ Never force-clean a workspace merely to make a status command green.
 ```
 
 For OAuth, tunnel, authorization, security, and recovery problems, continue with
-[`repo-harness-05-operations-security-troubleshooting.md`](repo-harness-05-operations-security-troubleshooting.md).
+[guide 5: operations and troubleshooting](05-operations-security-troubleshooting.md).

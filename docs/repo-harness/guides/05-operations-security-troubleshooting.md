@@ -322,21 +322,21 @@ Graphify must use one identified graph per process. Prefer:
 graphify-mcp-run /absolute/project/graphify-out/graph.json
 ```
 
-Never silently fall back to another repository graph. See
-[`graphify-new-repository.md`](graphify-new-repository.md).
+Never silently fall back to another repository graph. See the
+[Graphify workflow](../../tools/graphify.md).
 
 ## Specialist references
 
 Use these only after the numbered onboarding workflow is understood:
 
-- [`repo-harness-mcp-coding-m1-min.md`](repo-harness-mcp-coding-m1-min.md) — full
-  implementation and target-Mac validation details;
-- [`repo-harness-mcp-quick-tunnel-fast.md`](repo-harness-mcp-quick-tunnel-fast.md)
-  — Quick Tunnel internals and manual fallback;
-- [`repo-harness-chatgpt-browser-setup.md`](repo-harness-chatgpt-browser-setup.md)
-  — separate Browser Engine planning/GitHub-app workflow;
-- [`repo-harness-chatgpt-browser-create-pre-tutorial.md`](repo-harness-chatgpt-browser-create-pre-tutorial.md)
-  — historical bounded Browser Create test notes.
+- [`m1-min` Coding MCP](../reference/m1-min-coding-mcp.md) — implementation and
+  target-Mac validation details;
+- [Quick Tunnel internals](../reference/quick-tunnel-internals.md) — helper
+  behavior and manual fallback;
+- [Browser Engine and GitHub Create/Review](../reference/browser-engine-github-create-review.md)
+  — separate Browser planning/GitHub-app workflow;
+- [Browser Create smoke test, 2026-08-03](../history/browser-create-smoke-test-2026-08-03.md)
+  — historical bounded test evidence.
 
 The Browser Engine/GitHub app workflow is not the same as Coding MCP. Use Coding
 MCP for local managed-workspace edits. Use Browser Engine only when you

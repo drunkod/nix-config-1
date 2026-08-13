@@ -14,6 +14,12 @@ This flake manages system configuration across three platforms:
 - **Dev Shells** - reproducible development environments via `nix develop`
 - **Packages** - standalone applications (e.g. neovim via nixvim) runnable with `nix run`
 
+### Documentation
+
+Start with the [documentation index](docs/README.md) for Repo Harness,
+code-intelligence tools, developer recipes, macOS integrations, and example
+snapshots.
+
 ### Architecture
 
 The flake uses [flake-parts](https://flake.parts) with [import-tree](https://github.com/vic/import-tree) to automatically load all modules from the `modules/` directory. Configuration is split into small, composable modules following the dendritic pattern. Modules are organized by feature, not by target OS, and hosts compose exactly what they need.

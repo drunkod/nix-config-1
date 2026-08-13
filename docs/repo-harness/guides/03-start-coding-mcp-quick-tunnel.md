@@ -2,7 +2,8 @@
 
 Use this guide after repository adoption and optional CodeGraph initialization.
 It starts or verifies the `m1-min` Coding MCP service, exposes it through an
-ephemeral authenticated HTTPS endpoint, and connects ChatGPT.
+ephemeral authenticated HTTPS endpoint, and connects ChatGPT. Shared rules:
+[`Repo Harness safety`](../safety.md).
 
 ## Command names
 
@@ -94,7 +95,6 @@ unset MCP_ENDPOINT
 repo-harness-mcp-restart
 ```
 
-Do not print or paste the endpoint while running this sequence.
 
 ## Step 3: verify all live layers
 
@@ -145,8 +145,6 @@ Authorization HTTP status: 302
 OAuth accepted; opening ChatGPT callback
 ```
 
-Never paste the endpoint, authorization URL, callback, passphrase, code, token,
-or cookie into chat or Git.
 
 ## Step 5: run visible invocation canaries
 
@@ -261,6 +259,5 @@ Do not use another tool or shell command to bypass the denial.
 [ ] ../outside was denied without fallback bypass
 ```
 
-Continue with [`repo-harness-04-daily-workflow.md`](repo-harness-04-daily-workflow.md).
-For tunnel internals, see
-[`repo-harness-mcp-quick-tunnel-fast.md`](repo-harness-mcp-quick-tunnel-fast.md).
+Continue with [guide 4: daily Coding workflow](04-daily-coding-workflow.md).
+For implementation details, see [Quick Tunnel internals](../reference/quick-tunnel-internals.md).

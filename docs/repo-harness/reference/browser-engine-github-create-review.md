@@ -1,8 +1,8 @@
 # Repo-harness ChatGPT Browser setup
 
-> Separate optional workflow. This Browser Engine + GitHub app path is not Coding MCP. For local managed-workspace coding, start with [`repo-harness-01-onboard-repository.md`](repo-harness-01-onboard-repository.md) and [`repo-harness-04-daily-workflow.md`](repo-harness-04-daily-workflow.md).
+> Separate optional workflow. This Browser Engine + GitHub app path is not Coding MCP. For local managed-workspace coding, start with [guide 1: onboard a repository](../guides/01-onboard-repository.md) and [guide 4: daily Coding workflow](../guides/04-daily-coding-workflow.md). Shared rules: [`Repo Harness safety`](../safety.md).
 
-This guide continues after the `m1-min` repo-harness bootstrap and repository adoption described in [`../REPO-HARNESS.md`](../REPO-HARNESS.md).
+This guide continues after the `m1-min` repo-harness bootstrap and repository adoption described in [`../REPO-HARNESS.md`](../../../REPO-HARNESS.md).
 
 It configures the smallest useful workflow:
 
@@ -139,7 +139,6 @@ The binding is local runtime state. Keep these paths ignored:
 .ai/harness/chatgpt/sessions/
 ```
 
-Do not copy or commit browser cookies, profile contents, tokens, or passwords.
 
 ## 4. Understand the Browser Engine file policy
 
@@ -173,7 +172,7 @@ is rejected with:
 path is not allowed for read
 ```
 
-Do not bypass the policy by copying arbitrary files blindly. Prefer an allowed canonical input such as `README.md`, `AGENTS.md`, or a reviewed file under `docs/`.
+Prefer an allowed canonical input such as `README.md`, `AGENTS.md`, or a reviewed file under `docs/`.
 
 ## 5. Run the transport smoke test
 
@@ -196,9 +195,10 @@ repo-harness chatgpt browser-list --repo .
 Inspect the dry-run session:
 
 ```bash
+SESSION_ID=chgpt_...
 repo-harness chatgpt browser-session \
   --repo . \
-  <session-id>
+  "$SESSION_ID"
 ```
 
 Confirm that it is marked `dry_run` and that no real browser conversation was opened.
@@ -265,7 +265,8 @@ Inspect the saved session:
 
 ```bash
 repo-harness chatgpt browser-list --repo .
-repo-harness chatgpt browser-session --repo . <session-id>
+SESSION_ID=chgpt_...
+repo-harness chatgpt browser-session --repo . "$SESSION_ID"
 ```
 
 Verify that only these inputs are present:
@@ -401,7 +402,6 @@ AGENTS.md
 docs/spec.md
 ```
 
-Do not move secret or unrelated content into an allowed directory merely to bypass the path gate.
 
 ### `blocked_default_profile`
 
@@ -414,9 +414,10 @@ For native CDP diagnostics, use a separate non-default automation user-data dire
 When a session reports `ORACLE_CAPTURE_INCOMPLETE`, resume the saved provider session:
 
 ```bash
+SESSION_ID=chgpt_...
 repo-harness chatgpt browser-followup \
   --repo . \
-  --session <session-id> \
+  --session "$SESSION_ID" \
   --prompt "Continue and return the complete requested result."
 ```
 

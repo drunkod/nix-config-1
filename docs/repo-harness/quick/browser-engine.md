@@ -2,7 +2,8 @@
 
 Browser Engine is separate from Coding MCP. It uses a logged-in ChatGPT Web
 session for consultation/planning. The GitHub app Create flow can perform remote
-GitHub writes under a bounded contract.
+GitHub writes under a bounded contract. Shared rules:
+[`Repo Harness safety`](../safety.md).
 
 ## Browser consultation / planning
 
@@ -42,9 +43,7 @@ Then run without `--dry-run` for a real browser session.
 
 ### 4. Plan from allowed files
 
-Browser Engine allows explicit workflow/reference files and denies secrets,
-private keys, `.git`, `.ssh`, `_ops`, and local Repo Harness JSON. Attach only
-reviewed files:
+Browser Engine accepts explicit workflow/reference files. Attach reviewed files:
 
 ```bash
 repo-harness chatgpt browser-consult \
@@ -56,7 +55,6 @@ repo-harness chatgpt browser-consult \
   --write-output .ai/harness/handoff/chatgpt/brief.md
 ```
 
-Do not commit browser cookies, tokens, profile state, or session locks.
 
 ## GitHub Create and Review
 
@@ -126,7 +124,5 @@ branch, commit, diff, draft PR, and CI evidence. Merge remains a human decision.
 - Create, review comments, CI reruns, pushes, PR readiness, and merge are
   separate writes.
 - Always use exact repository, base SHA, branch, allowed files, and draft policy.
-- Never attach local OAuth/browser/token files.
-
-For full historical details, see
-[`repo-harness-chatgpt-browser-setup.md`](repo-harness-chatgpt-browser-setup.md).
+For the complete specialist workflow, see
+[Browser Engine and GitHub Create/Review](../reference/browser-engine-github-create-review.md).

@@ -132,9 +132,12 @@ in
   flake.modules.darwin.m1-min = {
     host = minimalHost;
     home-manager.users.${minimalHost.user.name} =
-      { config, ... }:
+      { config, pkgs, ... }:
       {
         imports = aiFullImports;
+
+        home.packages = [ pkgs.gitingest ];
+
         services = {
           sops.enable = true;
 

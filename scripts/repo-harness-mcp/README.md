@@ -3,7 +3,7 @@
 This directory is a historical coding + named-Cloudflare-tunnel prototype. It is
 **not** the current default `m1-min` setup sequence.
 
-Start with [`../../docs/repo-harness-quick-start.md`](../../docs/repo-harness-quick-start.md).
+Start with the [Repo Harness documentation](../../docs/repo-harness/README.md).
 
 ## Current default commands
 
@@ -97,13 +97,13 @@ services. Do not use scripts `90`/`100` as the managed service path.
 
 There are no Planner scripts here. The current `m1-min` service is Coding-only.
 Use a separate manually served Planner profile/port; see
-[`../../docs/repo-harness-planner-quick.md`](../../docs/repo-harness-planner-quick.md).
+[Planner quick tutorial](../../docs/repo-harness/quick/planner.md).
 
 ### Browser Engine / GitHub Create
 
 There are no Browser Engine scripts here. Use the installed
 `repo-harness chatgpt browser-*` commands; see
-[`../../docs/repo-harness-browser-engine-quick.md`](../../docs/repo-harness-browser-engine-quick.md).
+[Browser Engine quick tutorial](../../docs/repo-harness/quick/browser-engine.md).
 
 ## Cleanup limitations
 

@@ -1,10 +1,10 @@
 # Repo-harness ChatGPT Browser Create pre-tutorial
 
-> Historical specialist test notes for the optional Browser Create workflow. This is not the normal Coding MCP onboarding path. Start with [`repo-harness-01-onboard-repository.md`](repo-harness-01-onboard-repository.md).
+> Historical specialist test notes for the optional Browser Create workflow. This is not the normal Coding MCP onboarding path. Start with [guide 1: onboard a repository](../guides/01-onboard-repository.md). Shared rules: [`Repo Harness safety`](../safety.md).
 
 This pre-tutorial records the working setup sequence and the failure modes found during the first isolated `browser-create` smoke-test preparation on macOS.
 
-Use it before the full workflow in [`repo-harness-chatgpt-browser-setup.md`](./repo-harness-chatgpt-browser-setup.md).
+Use it before the full workflow in the [Browser Engine and GitHub Create/Review reference](../reference/browser-engine-github-create-review.md).
 
 ## What this run proved
 
@@ -25,15 +25,13 @@ The same run also exposed two blockers that must be resolved before the real Cre
 1. Oracle reported `browserAppPreselect: false` and did not expose `--browser-app`.
 2. The dry-run command omitted `--draft-pr`, so repo-harness generated `draftPr: false` and instructed the browser session not to open a pull request.
 
-## Safety rules
+## Smoke-test contract
 
-- Use a separate worktree.
-- Pin the exact approved base commit.
-- Use a new `agent/*` remote branch name.
-- Confirm the remote branch is absent before every first real run.
-- Never manually create or push the target remote branch.
-- Do not rerun after a partial browser failure until GitHub state has been inspected.
-- Do not merge, mark ready, comment, review, rerun CI, enable auto-merge, or delete remote state during the smoke test.
+- use a separate worktree at the exact approved base;
+- use a new `agent/*` branch and confirm it is absent remotely;
+- after a partial browser failure, inspect GitHub state before retrying;
+- stop before merge, readiness, comments, reviews, CI reruns, auto-merge, or
+  remote deletion.
 
 ## 1. Re-enter the isolated workspace
 

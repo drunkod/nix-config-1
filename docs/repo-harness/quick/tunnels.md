@@ -1,7 +1,7 @@
 # Repo Harness tunnel variants: short tutorial
 
 Both variants expose the local loopback MCP service over authenticated HTTPS.
-Choose one.
+Choose one. Shared rules: [`Repo Harness safety`](../safety.md).
 
 ## Quick Tunnel — default
 
@@ -112,9 +112,3 @@ These scripts are superseded for managed operation:
 
 `100` remains a foreground diagnostic only. The Nix named-tunnel helper owns the
 runtime parameter/config flow.
-
-## Security
-
-Never commit Cloudflare certificates, credential JSON, generated runtime YAML,
-Quick Tunnel state, MCP endpoint values, or OAuth state. Keep MCP itself bound
-to loopback.

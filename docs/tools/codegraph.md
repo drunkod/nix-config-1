@@ -1,5 +1,7 @@
 # CodeGraph workflow
 
+[Code-intelligence tools](README.md) · [Documentation index](../README.md)
+
 This guide describes how to use CodeGraph safely with this Nix configuration.
 It is based on local tests with CodeGraph 1.5.0 on `aarch64-darwin`, not only on
 upstream documentation.
@@ -263,7 +265,7 @@ uses its own watched `.codegraph/` index. Running both increases CPU, memory,
 disk use, and agent context. If one tool is sufficient for a project, initialize
 only that tool there.
 
-See `docs/graphify-new-repository.md` for the tested `m1-min` Graphify workflow.
+See the [Graphify workflow](graphify.md) for the tested `m1-min` setup.
 
 ## Allowed operations
 
