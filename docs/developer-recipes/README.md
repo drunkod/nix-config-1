@@ -19,25 +19,50 @@ recipes do not repeat them.
 | Map a dependency upgrade before changing versions | [Dependency upgrade map](09-dependency-upgrade-map.md) |
 | Trace a schema/API/event change across layers | [Cross-layer contract change](10-cross-layer-contract-change.md) |
 | Turn a branch into PR, release, and handoff context | [Release change capsule](11-release-change-capsule.md) |
+| Refresh capability-local agent instructions | [Capability context refresh](12-capability-context-refresh.md) |
+| Promote reusable decisions and runbooks | [Durable knowledge promotion](13-promote-durable-knowledge.md) |
+| Continue a saved ChatGPT Browser consultation | [Iterative Browser consultation](14-iterative-browser-consult.md) |
+| Audit host hooks, setup, and legacy state | [Host security and migration audit](15-host-security-and-migration-audit.md) |
 
 ## Shared index preflight
 
 Run before a recipe that uses both graph tools:
 
 ```bash
+repo-harness tools ensure codegraph \
+  --check \
+  --repo "$PWD" \
+  --json
+
 if test -d "$PWD/.codegraph"; then
-  codegraph sync "$PWD"
+  repo-harness tools ensure codegraph \
+    --sync \
+    --no-install-deps \
+    --repo "$PWD" \
+    --json
 else
-  codegraph init "$PWD"
+  repo-harness tools ensure codegraph \
+    --init \
+    --no-install-deps \
+    --repo "$PWD" \
+    --json
 fi
 
 if test -s "$PWD/graphify-out/graph.json" &&
    test -s "$PWD/graphify-out/manifest.json"; then
-  graphify-update "$PWD"
+  nix shell nixpkgs#coreutils --command graphify-update "$PWD"
 else
-  graphify-extract "$PWD" --code-only
+  nix shell nixpkgs#coreutils --command \
+    graphify-extract "$PWD" --code-only
 fi
 ```
+
+The Repo Harness check is read-only and may report stale state or exit nonzero
+with structured warnings. Nix owns CodeGraph installation on this host; do not
+run imperative install/upgrade suggestions.
+
+The Graphify wrappers currently need GNU coreutils for cleanup on macOS, so the
+examples run them through `nix shell nixpkgs#coreutils --command`.
 
 CodeGraph and Graphify keep separate state for each repository/worktree. The
 default Graphify wrappers build an unclustered code graph, so recipes ask about
@@ -80,9 +105,12 @@ in the shared [`safety guide`](../repo-harness/safety.md).
 For an exact-file digest, put one repository-relative path per line and run:
 
 ```bash
-"$HOME/nix-config/scripts/gitingest-selected.sh" \
+nix shell nixpkgs#coreutils --command \
+  "$HOME/nix-config/scripts/gitingest-selected.sh" \
   "$PWD" packet-files.txt packet.md
 ```
 
 The helper preserves paths containing spaces, skips deleted files, and stops
 instead of falling back to a full-repository digest when the selection is empty.
+GNU coreutils is currently required because the helper uses GNU-style `cp`/`rm`
+flags on macOS.

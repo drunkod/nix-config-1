@@ -30,8 +30,11 @@ Run from the adopted repository or test worktree:
 cd /path/to/repository
 
 repo-harness --version
-repo-harness state resolve --json
-repo-harness run check-task-workflow --strict
+repo-harness state resolve \
+  --target-path docs/spec.md \
+  --operation inspect \
+  --json
+repo-harness run check-task-workflow -- --strict
 git status --short
 ```
 

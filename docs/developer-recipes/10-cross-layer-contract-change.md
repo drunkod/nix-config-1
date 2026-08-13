@@ -20,7 +20,8 @@ codegraph explore \
 ## 2. Detect architectural boundaries
 
 ```bash
-graphify-query \
+nix shell nixpkgs#coreutils --command \
+  graphify-query \
   "<field/type/event> producers consumers serialization persistence dependency paths" \
   --graph "$PWD/graphify-out/graph.json" \
   --budget 2400 \
@@ -33,18 +34,48 @@ Mark each boundary where old and new representations may coexist:
 schema -> parser -> domain type -> storage -> API -> client -> UI
 ```
 
-## 3. Package only the contract chain
+## 3. Plan architecture projection when configured
+
+If `.ai/harness/policy.json` exists, inspect every layer that may change:
+
+```bash
+repo-harness architecture-projection status --json
+repo-harness architecture-projection plan \
+  --changed-path path/to/contract-definition path/to/consumer \
+  --json
+```
+
+If the policy file is absent, architecture projection is not configured; retain
+the CodeGraph and Graphify evidence instead.
+
+Preview capability-local instruction updates when configured:
+
+```bash
+repo-harness capability-context request \
+  --repo "$PWD" \
+  --path path/to/contract-definition \
+  --json
+repo-harness capability-context sync \
+  --repo "$PWD" \
+  --pending \
+  --dry-run \
+  --json
+```
+
+## 4. Package only the contract chain
 
 Put the reviewed files from the trace into `contract-files.txt`, then generate a
 focused digest:
 
 ```bash
-"$HOME/nix-config/scripts/gitingest-selected.sh" "$PWD" \
+nix shell nixpkgs#coreutils --command \
+  "$HOME/nix-config/scripts/gitingest-selected.sh" \
+  "$PWD" \
   .ai/context-packets/contract-change/contract-files.txt \
   .ai/context-packets/contract-change/contract-chain.md
 ```
 
-## 4. Ask for migration sequencing
+## 5. Ask for migration sequencing
 
 ```text
 Design a backward-compatible migration for this contract. Identify the order of
@@ -53,4 +84,6 @@ tests, and the point where old support can be removed.
 ```
 
 After implementation, rerun the trace. Any remaining old-field consumer becomes
-a concrete follow-up item.
+a concrete follow-up item. For configured repositories, also run
+`repo-harness architecture-projection check --changed-path <path> --json` for
+each changed layer.

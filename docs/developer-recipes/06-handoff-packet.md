@@ -83,15 +83,37 @@ A large Gitingest file is useful only for disconnected review or external chat.
 
 ## 5. Prepare Repo Harness recovery views
 
-The installed fork exposes bundled handoff helpers through `repo-harness run`.
-List available helpers first:
+Read the next continuation unit, then generate the appropriate handoff artifact:
 
 ```bash
-repo-harness run --help
+repo-harness state next --json
+repo-harness run prepare-handoff
+repo-harness run prepare-codex-handoff
 ```
 
-Use only a verified helper name supported by the installed version. Do not copy
-newer website commands blindly.
+The continuation envelope is read-only workflow state authorizing one bounded
+unit. Attempt receipts are liveness evidence, not workflow authority. After one unit,
+record the progress tokens from the before/after envelopes:
+
+```bash
+repo-harness state attempt \
+  --unit-ref plans/path-to-active-plan.md \
+  --outcome completed \
+  --before-progress-token '<token-from-before-envelope>' \
+  --after-progress-token '<token-from-after-envelope>' \
+  --json
+```
+
+On the receiving side, forward helper arguments after `--`:
+
+```bash
+repo-harness run codex-handoff-resume -- --help
+repo-harness run codex-handoff-resume -- \
+  --cwd "$PWD" \
+  --print-prompt
+```
+
+Use `repo-harness run --help` if a helper disappears in a later release.
 
 ## 6. Handoff prompt
 

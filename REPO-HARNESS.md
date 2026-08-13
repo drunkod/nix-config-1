@@ -46,12 +46,28 @@ scripts and non-interactive shells.
 - [Historical evidence](docs/repo-harness/README.md#historical-evidence)
 - [Everyday developer recipes](docs/developer-recipes/README.md)
 
-## Upgrade behavior
+## Update Repo Harness
 
-A Nix rebuild updates the launcher, services, and helper commands. It does not
-silently update the mutable Repo Harness CLI. Refresh it explicitly:
+Repo Harness is not a flake input and is not recorded in `flake.lock`.
+Therefore, `nix flake update` does not update the CLI. The source configured in
+`modules/programs/repo-harness.nix` is the moving upstream `mvp` branch.
+
+Refresh the CLI explicitly, then verify the installed version:
 
 ```bash
-repo-harness-bootstrap
+rh-bootstrap
 repo-harness --version
+rh-check
+```
+
+`rh-bootstrap` is the interactive Zsh alias for
+`repo-harness-bootstrap`. Use the long command in scripts and non-interactive
+shells.
+
+A Nix rebuild is only needed after changing the Nix-managed launcher, services,
+helpers, or source URL. Updating normal flake inputs remains a separate action:
+
+```bash
+nix flake update             # update every declared input
+nix flake update input-name  # update one declared input
 ```

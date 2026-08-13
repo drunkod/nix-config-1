@@ -15,18 +15,10 @@ CodeGraph only after adoption by continuing to guide 2.
 | `drunkod/repo-harness` | Repo Harness CLI, repository contract, MCP protocol, workspace and security behavior |
 | `drunkod/nix-config-1` | Installation and operation on this Mac: launchd, loopback port, Quick Tunnel, OAuth helper, aliases |
 
-The workflow documented here was tested with:
-
-```text
-repo-harness: 1789a75100bc767c991104c32df39478ff3bbf32
-nix-config:    branch agent/repo-harness-coding-mcp-m1-min
-```
-
-`rh-bootstrap` currently installs the moving Repo Harness branch
-`agent/chatgpt-github-create-mvp`, not that exact SHA. `repo-harness --version`
-reports package version `0.12.0` but does not prove source identity. Before
-re-bootstrapping, inspect the upstream branch and treat behavior beyond the
-tested SHA as a new version requiring the onboarding and MCP checks again.
+The current authority for this guide is the installed `repo-harness 0.15.0`
+package. `rh-bootstrap` installs the moving upstream `mvp` branch, so
+`repo-harness --version` confirms the package version but not an exact source
+commit. Re-run the onboarding previews and MCP checks after refreshing the CLI.
 
 ## Terminology that must not be mixed
 
@@ -145,14 +137,15 @@ repo-harness init \
   --repo "$PWD" \
   --mode minimal \
   --no-codegraph \
+  --no-verify \
   --dry-run
 ```
 
-Important: on Repo Harness `0.12.0` at the tested revision, minimal adoption
-creates a valid `.ai/harness/workflow-contract.json` but its final strict
-workflow verification can fail because minimal mode omits files required by the
-full strict checker. Minimal adoption can enable MCP without claiming full
-strict workflow compliance.
+Minimal adoption installs the core MCP, task, and handoff scaffolding. It
+intentionally omits the complete standard policy, context, and architecture
+surfaces, so `--no-verify` is appropriate only for a deliberate MCP-first setup.
+Preview the operation list because generated artifacts can change by release.
+Minimal adoption must not be presented as full Strict workflow compliance.
 
 ## Step 4: apply and review adoption
 
@@ -178,7 +171,8 @@ For the bounded MCP-first contract:
 repo-harness init \
   --repo "$PWD" \
   --mode minimal \
-  --no-codegraph
+  --no-codegraph \
+  --no-verify
 ```
 
 Minimal adoption derives the initial `docs/spec.md` product title from the target
@@ -192,7 +186,10 @@ git status --short
 git diff --stat
 git diff
 repo-harness status --json
-repo-harness state resolve --json
+repo-harness state resolve \
+  --target-path docs/spec.md \
+  --operation inspect \
+  --json
 ```
 
 Require `repo-harness status --json` to report:
@@ -235,8 +232,8 @@ env -C ../REPOSITORY-adoption-check \
 git worktree remove ../REPOSITORY-adoption-check
 ```
 
-For minimal adoption, record the known strict-check failure rather than claiming
-it passed.
+For minimal adoption, record that verification was intentionally skipped and do
+not claim the standard/Strict contract passed.
 
 ### Build context after adoption
 

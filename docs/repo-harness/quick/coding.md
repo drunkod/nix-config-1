@@ -7,7 +7,7 @@ managed worktree. Shared rules: [`Repo Harness safety`](../safety.md).
 
 ```bash
 cd /absolute/path/to/repository
-repo-harness init --mode minimal --no-codegraph --dry-run
+repo-harness init --mode minimal --no-codegraph --no-verify --dry-run
 repo-harness init --mode minimal --no-codegraph --no-verify
 repo-harness status --json
 ```
@@ -18,6 +18,7 @@ adoption files.
 ## 2. Initialize source CodeGraph
 
 ```bash
+repo-harness tools ensure codegraph --check --repo "$PWD" --json
 codegraph init "$PWD"
 codegraph status "$PWD"
 ```

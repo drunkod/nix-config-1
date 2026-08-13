@@ -33,7 +33,8 @@ class, function, or file.
 ## 3. Use Graphify for relationship questions
 
 ```bash
-graphify-query \
+nix shell nixpkgs#coreutils --command \
+  graphify-query \
   "<feature> callers dependencies tests" \
   --graph "$PWD/graphify-out/graph.json" \
   --budget 2000

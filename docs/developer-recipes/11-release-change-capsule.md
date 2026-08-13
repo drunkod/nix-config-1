@@ -35,22 +35,59 @@ $changed_files" \
 ## 3. Detect architectural movement
 
 ```bash
-graphify-query \
+nix shell nixpkgs#coreutils --command \
+  graphify-query \
   "<main changed symbols> callers dependency paths architecture impact" \
   --graph "$PWD/graphify-out/graph.json" \
   --budget 2000 \
   > .ai/context-packets/release/architecture-impact.md
 ```
 
-## 4. Digest exactly the final changed files
+## 4. Add Repo Harness architecture state when configured
+
+If `.ai/harness/policy.json` exists:
 
 ```bash
-"$HOME/nix-config/scripts/gitingest-selected.sh" "$PWD" \
+repo-harness architecture-projection status --json \
+  > .ai/context-packets/release/architecture-projection-status.json
+repo-harness architecture-projection drain --json \
+  > .ai/context-packets/release/architecture-projection-drain.json
+```
+
+Failed or unavailable projection remains pending in `0.15.0`; do not rewrite or
+manually acknowledge it as clean. If the policy file is absent, omit these files.
+
+## 5. Digest exactly the final changed files
+
+```bash
+nix shell nixpkgs#coreutils --command \
+  "$HOME/nix-config/scripts/gitingest-selected.sh" \
+  "$PWD" \
   .ai/context-packets/release/changed-files.txt \
   .ai/context-packets/release/final-source.md
 ```
 
-## 5. Generate multiple outputs from one capsule
+## 6. Add workflow and merge evidence
+
+For a Standard/Strict release candidate:
+
+```bash
+repo-harness run check-task-workflow -- --strict
+repo-harness cross-review \
+  --repo "$PWD" \
+  --base "$BASE" \
+  --provider codex \
+  --json
+repo-harness run merge-gate -- \
+  run \
+  --base "$BASE" \
+  --format json
+```
+
+Choose the opposite review provider. `ship-worktrees` is a separate authorized
+write because it commits, pushes, and opens draft PRs.
+
+## 7. Generate multiple outputs from one capsule
 
 Attach the capsule and ask ChatGPT for any of:
 

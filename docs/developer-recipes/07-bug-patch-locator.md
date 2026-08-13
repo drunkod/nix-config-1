@@ -19,7 +19,8 @@ codegraph explore \
 Add architectural relationships when the flow crosses modules:
 
 ```bash
-graphify-query \
+nix shell nixpkgs#coreutils --command \
+  graphify-query \
   "<entry symbol> <failure symbol> callers dependencies tests" \
   --graph "$PWD/graphify-out/graph.json" \
   --budget 2000 \
@@ -65,12 +66,20 @@ codegraph affected \
   > .ai/context-packets/bug-name/03-affected-tests.json
 ```
 
-## 5. Create a focused post-patch digest
+## 5. Check workflow and create a focused digest
 
-Digest the reviewed changed-file list:
+For Standard/Strict work, run the configured workflow check:
 
 ```bash
-"$HOME/nix-config/scripts/gitingest-selected.sh" "$PWD" \
+repo-harness run check-task-workflow -- --strict
+```
+
+Digest the reviewed changed-file list using GNU coreutils on macOS:
+
+```bash
+nix shell nixpkgs#coreutils --command \
+  "$HOME/nix-config/scripts/gitingest-selected.sh" \
+  "$PWD" \
   .ai/context-packets/bug-name/changed-files.txt \
   .ai/context-packets/bug-name/04-patched-files.md
 ```

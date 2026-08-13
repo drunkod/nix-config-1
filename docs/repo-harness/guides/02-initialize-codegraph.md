@@ -31,9 +31,16 @@ Project indexing is separate and is allowed.
 ```bash
 command -v codegraph
 codegraph version
+repo-harness tools ensure codegraph \
+  --check \
+  --repo "$PWD" \
+  --json
 ```
 
-The tested `m1-min` configuration uses CodeGraph `1.5.0`.
+The tested `m1-min` configuration uses CodeGraph `1.5.0`. The Repo Harness
+preflight is read-only and may report a stale index or an imperative remediation
+command. Inspect the JSON, but do not run install/upgrade advice on this
+Nix-managed host.
 
 ## Step 2: verify the project boundary
 
@@ -134,7 +141,7 @@ Every Git worktree needs its own `.codegraph/` index. An index created in:
 is not copied into a Repo Harness managed worktree because `.codegraph/` is
 ignored local state.
 
-At the tested Repo Harness revision:
+With installed Repo Harness `0.15.0`:
 
 - `open_workspace` creates a managed Git worktree but does not initialize,
   copy, or sync CodeGraph;

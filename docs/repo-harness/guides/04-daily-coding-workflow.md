@@ -139,13 +139,15 @@ Before allowing edits, inspect the returned:
 The remote tool intentionally does not reveal the local managed-worktree path.
 Do not ask ChatGPT to discover that path through shell commands.
 
-At the pinned upstream revision, `open_workspace` should persist managed
-workspaces to the same state read by `repo-harness mcp workspaces list --json`.
-A live validation nevertheless returned an empty local list while the MCP
-workspace ID remained usable. Treat that as an observed state/installation
-discrepancy: preserve the `open_workspace` response as immediate evidence, do
-not assume local cleanup will work, and investigate the active CLI/service state
-before discarding the workspace.
+With `0.15.0`, the workspace should also appear in:
+
+```bash
+repo-harness mcp workspaces list --json
+```
+
+If it is absent, preserve the `open_workspace` response and compare the active
+CLI/service versions and Repo Harness state roots before attempting cleanup. Do
+not infer that an unlisted workspace is safe to discard.
 
 Stop if the base SHA, repository, or instructions are not what you approved.
 
@@ -175,6 +177,16 @@ repo-harness state resolve \
 ```
 
 The resolved workflow may raise the task to Standard or Strict.
+
+For long work, obtain exactly one continuation unit:
+
+```bash
+repo-harness state next --json
+```
+
+Treat its envelope as read-only authorization for one bounded unit. Record
+attempt liveness with the command shape from `repo-harness state attempt --help`;
+do not use attempt receipts as workflow authority.
 
 ## Step 7: initialize CodeGraph in a new managed worktree
 
@@ -222,6 +234,21 @@ rules are centralized in the shared safety guide.
 
 A mutation may succeed even if CodeGraph refresh fails. Do not repeat the write
 just to repair indexing. Refresh the index separately.
+
+If the repository has `.ai/harness/policy.json`, check architecture impact for
+each changed path:
+
+```bash
+repo-harness architecture-projection plan \
+  --changed-path path/to/changed-file \
+  --json
+repo-harness architecture-projection check \
+  --changed-path path/to/changed-file \
+  --json
+```
+
+If the policy file is absent, architecture projection is simply not configured
+for this repository.
 
 ## Step 10: run the traversal negative test for a new setup
 
@@ -291,9 +318,11 @@ Cleanup refuses dirty or unmerged worktrees. First choose one:
 [ ] managed worktree mode used
 [ ] CodeGraph initialized in this managed worktree before its first patch
 [ ] applicable instructions read
+[ ] continuation envelope reviewed when this is a long-running task
 [ ] allowed and forbidden paths stated
 [ ] only bounded changes made
 [ ] targeted validation actually ran
+[ ] configured architecture projection was checked
 [ ] status and diff reviewed
 [ ] commit/push/PR/merge handled as separate approvals
 [ ] workspace preserved or cleaned deliberately

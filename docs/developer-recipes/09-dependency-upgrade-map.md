@@ -19,7 +19,8 @@ codegraph explore \
 ## 2. Find architectural concentration
 
 ```bash
-graphify-query \
+nix shell nixpkgs#coreutils --command \
+  graphify-query \
   "<dependency> wrappers consumers dependency paths tests configuration" \
   --graph "$PWD/graphify-out/graph.json" \
   --budget 2200 \
@@ -35,12 +36,24 @@ Create `upgrade-files.txt` containing the reviewed manifest, lock file, wrappers
 callers, and tests identified above. Then:
 
 ```bash
-"$HOME/nix-config/scripts/gitingest-selected.sh" "$PWD" \
+nix shell nixpkgs#coreutils --command \
+  "$HOME/nix-config/scripts/gitingest-selected.sh" \
+  "$PWD" \
   .ai/context-packets/dependency-upgrade/upgrade-files.txt \
   .ai/context-packets/dependency-upgrade/compatibility-source.md
 ```
 
-## 4. Ask ChatGPT for an upgrade plan
+## 4. Resolve upgrade risk
+
+```bash
+repo-harness state resolve \
+  --target-path path/to/manifest \
+  --target-path path/to/lock-file \
+  --operation modify \
+  --json
+```
+
+## 5. Ask ChatGPT for an upgrade plan
 
 ```text
 Compare the current dependency integration with the target release notes I

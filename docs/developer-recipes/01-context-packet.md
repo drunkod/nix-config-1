@@ -66,7 +66,8 @@ the same files again in the digest when attachment size matters.
 ## 4. Optionally add Graphify structure
 
 ```bash
-graphify-query \
+nix shell nixpkgs#coreutils --command \
+  graphify-query \
   "<feature> entry points callers dependencies paths" \
   --graph "$PWD/graphify-out/graph.json" \
   --budget 2000 \

@@ -25,9 +25,9 @@ only when you want a stable custom hostname.
 
 ## Source authority
 
-The implementation follows `drunkod/repo-harness` branch
-`agent/chatgpt-github-create-mvp`, including the ChatGPT MCP coding tutorial and
-the Quick Tunnel testing workflow.
+The current runtime authority is installed `repo-harness 0.15.0`. Bootstrap
+tracks the moving upstream `mvp` branch, so the reported package version does
+not identify an exact source commit.
 
 ## What Nix owns
 
@@ -117,13 +117,14 @@ git worktree add --detach "$MVP_WORKTREE" HEAD
 repo-harness init \
   --repo "$MVP_WORKTREE" \
   --mode minimal \
-  --no-codegraph
+  --no-codegraph \
+  --no-verify
 ```
 
-On Repo Harness `0.12.0` from upstream commit
-`1789a75100bc767c991104c32df39478ff3bbf32`, this bounded mode created 11
-untracked files plus a small `.gitignore` update. It preserved the required
-`.gitkeep` sentinels in `.ai/harness/worktrees/` and `.ai/harness/runs/`.
+Minimal mode creates the core MCP, task, and handoff scaffolding. Preview the
+exact operations before applying because generated paths and counts can change
+between releases. It intentionally omits the complete standard policy, context,
+and architecture surfaces.
 
 Verify adoption from inside that worktree:
 
@@ -138,25 +139,13 @@ Require:
 .repo.optInMarker == ".ai/harness/workflow-contract.json"
 ```
 
-### Known minimal-mode limitation
+### Minimal-mode boundary
 
-The tested `repo-harness init --mode minimal` currently exits nonzero during its
-final `check-task-workflow --strict` step. Minimal mode writes a full workflow
-contract but intentionally omits many standard-mode directories, templates,
-policy files, architecture references, and deployment files that the strict
-checker requires.
-
-This distinction matters:
-
-- **MCP adoption is valid:** `repo-harness status` reports `optIn: true` and a
-  temporary loopback coding server starts successfully for an explicit
-  `read_write` grant.
-- **Full Repo Harness workflow compliance is not valid:** the strict workflow
-  check fails until standard adoption artifacts are installed.
-
-Treat the nonzero initialization result as a known upstream minimal-mode
-inconsistency, not as proof that Coding MCP is broken. Do not hide the failure
-or claim the repository passes the strict workflow gate.
+`--no-verify` is deliberate for this MCP-first path. Require
+`repo-harness status --json` to report adoption, but do not equate that with the
+complete standard/Strict workflow contract. Use `--mode standard` in a separate
+reviewed change when policy, context, architecture projection, and strict
+verification are required.
 
 ### Applying adoption to `~/nix-config`
 
@@ -212,8 +201,8 @@ OAuth protected-resource    HTTP 200
 ```
 
 The test used an alternate port and did not touch the PR checkout. Config and
-OAuth token files were restored afterward. Repo Harness `0.12.0` exposes
-`mcp access set` but no revoke command, so deleting the disposable worktree can
+OAuth token files were restored afterward. Repo Harness `0.15.0` exposes
+`mcp access set` but no registry-delete command, so deleting the disposable worktree can
 leave an unusable path entry in `registered-repos.json`; do not hand-edit the
 registry or its authorization revision to remove it.
 

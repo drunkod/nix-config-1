@@ -23,9 +23,12 @@ The installed CLI supports Planner, but the current `m1-min` deployment owns one
 enabled user-scoped Coding configuration in `~/.repo-harness`. That user config
 takes precedence over repository-scoped Planner configuration.
 
-Therefore **do not attempt to run Planner concurrently** by merely choosing a
-different port or `--scope repo`; it can still resolve Coding OAuth/config state.
-The Coding Quick Tunnel also publishes only port `8765`.
+Therefore **do not attempt to run Planner concurrently** with only
+`repo-harness mcp setup codex --scope project` or a different port. Project
+scope and a port change do not isolate user-level ChatGPT/OAuth state. A
+concurrent Planner requires a separate Repo Harness state root, config, OAuth
+state, service, and endpoint. The Coding Quick Tunnel publishes only port
+`8765`.
 
 Supported choices today:
 

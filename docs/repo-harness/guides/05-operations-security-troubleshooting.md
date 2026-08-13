@@ -136,7 +136,7 @@ Access/profile changes advance the authorization revision. Restart the service,
 refresh the ChatGPT app schema, and reauthorize. Old OAuth authorization failing
 after a revision change is expected fail-closed behavior.
 
-Repo Harness `0.12.0` does not expose a delete command for registry entries.
+Repo Harness `0.15.0` does not expose a delete command for registry entries.
 Do not hand-edit `registered-repos.json` or its authorization revision. Downgrade
 unused entries to `read_only`; fix removal support upstream if deletion is
 required.
@@ -211,28 +211,21 @@ repo-harness-mcp-quick-restart
 
 Do not solve this by copying only the marker into an unrelated checkout.
 
-### Minimal adoption exits nonzero
+### Minimal adoption needs an explicit boundary
 
-On the tested `0.12.0` revision, `--mode minimal` can mark the repository adopted
-and then fail its final full strict checker because the minimal artifact set is
-smaller than the strict contract.
-
-Verify the exact state:
+For a deliberate MCP-only setup, preview and apply minimal mode with verification
+explicitly disabled:
 
 ```bash
+repo-harness init --mode minimal --no-codegraph --no-verify --dry-run
+repo-harness init --mode minimal --no-codegraph --no-verify
 repo-harness status --json
-repo-harness state resolve --json
-repo-harness run check-task-workflow --strict
 ```
 
-Choose deliberately:
-
-- keep minimal adoption for the MCP-first MVP and document the failed strict
-  gate; or
-- adopt standard mode in a separate reviewed change to obtain full workflow
-  compliance.
-
-Do not hide the failure.
+Minimal installs core MCP, task, and handoff scaffolding but omits the complete
+standard policy, context, and architecture surfaces. Use standard adoption when
+the repository needs the complete workflow contract. Never report minimal mode
+as full Strict compliance.
 
 ### `open_workspace` cannot find the repository
 
@@ -291,13 +284,49 @@ Common causes:
 Generate one current tunnel, update the app URL, start a fresh sign-in, and run
 `repo-harness-mcp-chatgpt-auth` with the newly copied authorization URL. Do not reuse old URLs.
 
+### Architecture projection is unavailable or pending
+
+First check whether the repository has `.ai/harness/policy.json`. Without it,
+architecture projection is not configured. For a configured repository:
+
+```bash
+repo-harness architecture-projection status --json
+repo-harness architecture-projection drain --json
+```
+
+In `0.15.0`, failed or unavailable projection remains pending for retry. Stop,
+normal drain, and manual drain share the frozen changed set. Do not manually
+acknowledge failed architecture work as clean.
+
+### Setup, update, or doctor exits nonzero
+
+```bash
+repo-harness setup check --json
+repo-harness update --check --json
+repo-harness doctor --json
+```
+
+These read-only commands can exit nonzero when their structured result includes
+blocked, warning, or failing checks. Inspect the JSON summary and individual
+checks instead of assuming a parser or command failure.
+
 ### CodeGraph is missing or stale
 
 CodeGraph is optional navigation metadata, not an MCP authorization gate. A code
 mutation can succeed even when index refresh fails. Do not repeat the mutation.
 Repair or refresh indexing separately using the Nix-managed installation.
 
-Initialize the canonical source checkout with:
+Run the read-only Repo Harness preflight first:
+
+```bash
+repo-harness tools ensure codegraph \
+  --check \
+  --repo /absolute/path/to/repository \
+  --json
+```
+
+Nix owns installation on this host, so do not execute imperative install or
+upgrade advice. Initialize the canonical source checkout with:
 
 ```bash
 codegraph init /absolute/path/to/repository

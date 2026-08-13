@@ -49,7 +49,7 @@ Do not replace these with the old numbered sequence.
 
 ```bash
 cd /absolute/repository
-repo-harness init --mode minimal --no-codegraph --dry-run
+repo-harness init --mode minimal --no-codegraph --no-verify --dry-run
 repo-harness init --mode minimal --no-codegraph --no-verify
 ```
 
@@ -96,7 +96,9 @@ services. Do not use scripts `90`/`100` as the managed service path.
 ### Planner
 
 There are no Planner scripts here. The current `m1-min` service is Coding-only.
-Use a separate manually served Planner profile/port; see
+A different profile or port alone is not sufficient isolation: concurrent
+Planner requires a separate Repo Harness state root, config, OAuth state,
+service, and endpoint. See the
 [Planner quick tutorial](../../docs/repo-harness/quick/planner.md).
 
 ### Browser Engine / GitHub Create

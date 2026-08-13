@@ -35,10 +35,9 @@ If you know two endpoints of the flow, use the refreshed Graphify graph to find
 the relationship:
 
 ```bash
-graphify-query \
-  "path from <entry symbol> to <failure symbol>" \
-  --graph "$PWD/graphify-out/graph.json" \
-  --budget 2000
+nix shell nixpkgs#coreutils --command \
+  graphify path "<entry symbol>" "<failure symbol>" \
+  --graph "$PWD/graphify-out/graph.json"
 ```
 
 ## 3. Reproduce before editing
@@ -64,7 +63,20 @@ Rank the likely root causes. For each, cite evidence and give one discriminating
 test. Do not implement a fix yet.
 ```
 
-## 5. Define the fix boundary
+## 5. Resolve workflow risk
+
+```bash
+repo-harness state resolve \
+  --target-path path/to/source \
+  --target-path path/to/regression-test \
+  --operation modify \
+  --json
+```
+
+Use the resolved Lite, Standard, or Strict profile when defining evidence and
+review requirements.
+
+## 6. Define the fix boundary
 
 ```markdown
 Goal: fix the reproduced failure
@@ -75,7 +87,7 @@ Validation: exact command
 Stop after: show diff and test result; do not commit or push
 ```
 
-## 6. Hand off implementation
+## 7. Hand off implementation
 
 Record the reproduced root cause, exact patch/test boundary, validation command,
 and unresolved assumptions. Then continue with

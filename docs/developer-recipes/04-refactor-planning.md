@@ -41,7 +41,8 @@ codegraph affected --path "$PWD" --stdin
 ## 3. Use Graphify for architecture boundaries
 
 ```bash
-graphify-query \
+nix shell nixpkgs#coreutils --command \
+  graphify-query \
   "<abstraction> callers dependencies paths blast radius" \
   --graph "$PWD/graphify-out/graph.json" \
   --budget 2500
@@ -50,7 +51,35 @@ graphify-query \
 Look for hidden callers, long dependency paths, and modules that should not be
 changed together.
 
-## 4. Ask ChatGPT for staged options
+## 4. Check Repo Harness architecture projection
+
+For a standard-adopted repository with `.ai/harness/policy.json`:
+
+```bash
+repo-harness architecture-projection status --json
+repo-harness architecture-projection plan \
+  --changed-path path/to/proposed-file \
+  --json
+```
+
+If the policy file is absent, skip this step: architecture projection is not
+configured for that repository.
+
+For configured capability-local context, also preview the affected instructions:
+
+```bash
+repo-harness capability-context request \
+  --repo "$PWD" \
+  --path path/to/proposed-file \
+  --json
+repo-harness capability-context sync \
+  --repo "$PWD" \
+  --path path/to/proposed-file \
+  --dry-run \
+  --json
+```
+
+## 5. Ask ChatGPT for staged options
 
 Provide the refactor brief and focused graph evidence:
 
@@ -60,7 +89,7 @@ replacement. For each list exact paths, sequencing, tests, rollback, and risks.
 Do not implement.
 ```
 
-## 5. Choose increments
+## 6. Choose increments
 
 Prefer independently verifiable steps:
 
@@ -70,10 +99,16 @@ Prefer independently verifiable steps:
 4. validate;
 5. remove old path only after all callers migrate.
 
-Create a Standard/Strict plan only when task risk requires it. Use
-`repo-harness state resolve --json` for a concrete operation.
+Create a Standard/Strict plan only when task risk requires it:
 
-## 6. Execute safely
+```bash
+repo-harness state resolve \
+  --target-path path/to/proposed-file \
+  --operation modify \
+  --json
+```
+
+## 7. Execute safely
 
 Use one managed workspace per coherent branch. Initialize CodeGraph separately
 inside each worktree. After each increment:
@@ -82,6 +117,7 @@ inside each worktree. After each increment:
 targeted tests
 codegraph sync .
 impact query
+architecture-projection check for each changed path, when configured
 status + diff
 ```
 

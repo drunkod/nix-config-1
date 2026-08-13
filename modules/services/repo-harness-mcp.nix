@@ -137,7 +137,6 @@
 
           cmd=(
             "$cli" mcp setup chatgpt
-            --scope user
             --repo "$repo"
             --profile ${escapeShellArg cfg.profile}
             --grant-read-write "$repo"

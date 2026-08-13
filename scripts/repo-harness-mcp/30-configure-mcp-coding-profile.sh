@@ -61,7 +61,6 @@ require_port "$port"
 
 cmd=(
   repo-harness mcp setup chatgpt
-  --scope user
   --repo "$repo"
   --profile coding
   --grant-read-write "$repo"

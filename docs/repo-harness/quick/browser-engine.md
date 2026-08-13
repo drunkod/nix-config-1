@@ -39,7 +39,22 @@ repo-harness chatgpt browser-consult \
   --prompt "Reply exactly OK"
 ```
 
-Then run without `--dry-run` for a real browser session.
+Then run without `--dry-run` for a real browser session. Record the returned
+session ID. Inspect and continue saved work with:
+
+```bash
+repo-harness chatgpt browser-list --repo . --json
+repo-harness chatgpt browser-session --repo . --metadata-only <session-id>
+repo-harness chatgpt browser-followup \
+  --repo . \
+  --session <session-id> \
+  --provider oracle \
+  --dry-run \
+  --prompt "Identify the strongest objection to the proposed plan."
+```
+
+See [Recipe 14](../../developer-recipes/14-iterative-browser-consult.md) for the
+complete saved-session lifecycle.
 
 ### 4. Plan from allowed files
 
@@ -109,13 +124,21 @@ scan. Do not rerun after partial failure until GitHub state is inspected.
 
 ### 5. Independent readback/review
 
-Use a new Browser Engine conversation and:
+Save the Create session ID, then use a new Browser Engine conversation for an
+independent readback. Preview the readback first:
 
 ```bash
-repo-harness chatgpt browser-create-verify --help
+CREATE_SESSION=<saved-create-session-id>
+
+repo-harness chatgpt browser-create-readback \
+  --repo . \
+  --session "$CREATE_SESSION" \
+  --gitleaks-bin "$GITLEAKS" \
+  --dry-run
 ```
 
-Run the verified command shape for the saved Create result. Review actual GitHub
+Review the generated request, then repeat without `--dry-run`. The compatibility
+alias `browser-create-verify` remains available in `0.15.0`. Review actual GitHub
 branch, commit, diff, draft PR, and CI evidence. Merge remains a human decision.
 
 ## Safety boundaries

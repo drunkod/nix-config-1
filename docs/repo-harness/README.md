@@ -14,6 +14,7 @@ shared [`safety rules`](safety.md), then choose one current procedure.
 | Publish MCP temporarily | [Quick Tunnel](quick/tunnels.md#quick-tunnel-default) | [Guide 3](guides/03-start-coding-mcp-quick-tunnel.md) |
 | Use a stable Cloudflare hostname | [Named Tunnel](quick/tunnels.md#named-tunnel-optional) | [Tunnel internals](reference/quick-tunnel-internals.md) |
 | Solve a daily development task | [Developer recipes](../developer-recipes/README.md) | Recipe-specific |
+| Discover every installed 0.15 CLI surface | [CLI toolbox](quick/cli-toolbox.md) | Installed `--help` and bundled docs |
 
 Quick tutorials are abbreviated. The numbered guides own current setup and
 operational sequencing. References explain internals and uncommon variants.
@@ -23,18 +24,36 @@ History records observed runs and is not current instruction.
 
 ```bash
 cd /absolute/path/to/repository
-repo-harness init --mode minimal --no-codegraph --dry-run
-repo-harness init --mode minimal --no-codegraph
+repo-harness init --mode minimal --no-codegraph --no-verify --dry-run
+repo-harness init --mode minimal --no-codegraph --no-verify
 repo-harness status --json
 ```
 
-Review and commit adoption before granting writes. Minimal mode enables the
-Coding MCP workflow but does not satisfy the full strict workflow checker. Use
-`--mode standard` for the complete workflow contract.
+Review and commit adoption before granting writes. Minimal mode installs the core MCP, task, and handoff scaffolding while
+intentionally omitting the complete standard policy, context, and architecture
+surfaces. `--no-verify` makes that deliberate MCP-only boundary explicit. Use
+`--mode standard` for the complete workflow contract, and preview exact
+operations because generated artifact sets can change between releases.
 
 Continue with [guide 1](guides/01-onboard-repository.md) when the repository has
 not been reviewed for adoption, or the [Coding quick tutorial](quick/coding.md)
 when adoption is already committed.
+
+## Update the CLI
+
+Repo Harness is installed from the moving upstream `mvp` Git branch through
+Bun; it is not a declared flake input. `nix flake update` does not update it.
+Refresh and verify it explicitly:
+
+```bash
+rh-bootstrap
+repo-harness --version
+rh-check
+```
+
+Use `repo-harness-bootstrap` instead of the `rh-bootstrap` alias in scripts and
+non-interactive shells. See the top-level [Repo Harness host guide](../../REPO-HARNESS.md#update-repo-harness)
+for the distinction between CLI, Nix configuration, and flake-input updates.
 
 ## Canonical guides
 
@@ -50,7 +69,8 @@ when adoption is already committed.
 - [Coding MCP](quick/coding.md)
 - [Browser Engine and GitHub Create/Review](quick/browser-engine.md)
 - [Quick and named tunnels](quick/tunnels.md)
-- [Workflow concepts for installed `0.12.0`](quick/workflow-concepts.md)
+- [Workflow concepts for installed `0.15.0`](quick/workflow-concepts.md)
+- [Repo Harness 0.15 CLI toolbox](quick/cli-toolbox.md)
 
 ## Specialist references
 
@@ -64,8 +84,8 @@ when adoption is already committed.
 
 ## Version boundary
 
-The public website may document commands newer than installed Repo Harness
-`0.12.0`. The complete mapping belongs in
+The public website may use a different command surface from installed Repo Harness
+`0.15.0`. The complete mapping belongs in
 [workflow concepts](quick/workflow-concepts.md). Confirm availability with:
 
 ```bash

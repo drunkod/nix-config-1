@@ -38,7 +38,8 @@ $changed_files" \
 ## 3. Check cross-module effects with Graphify
 
 ```bash
-graphify-query \
+nix shell nixpkgs#coreutils --command \
+  graphify-query \
   "<changed symbols> tests consumers dependency paths" \
   --graph "$PWD/graphify-out/graph.json" \
   --budget 1800 \
@@ -53,7 +54,9 @@ Create `packet-files.txt` by combining the reviewed changed paths and candidate
 test paths. Then:
 
 ```bash
-"$HOME/nix-config/scripts/gitingest-selected.sh" "$PWD" \
+nix shell nixpkgs#coreutils --command \
+  "$HOME/nix-config/scripts/gitingest-selected.sh" \
+  "$PWD" \
   .ai/context-packets/regression/packet-files.txt \
   .ai/context-packets/regression/source-and-tests.md
 ```
