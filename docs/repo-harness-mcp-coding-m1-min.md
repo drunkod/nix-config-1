@@ -94,21 +94,153 @@ repo-harness --version
 
 ## Adopt the target repository
 
-Preview first:
+The `coding` profile fails closed unless at least one explicitly registered
+`read_write` repository contains `.ai/harness/workflow-contract.json`. A registry
+grant by itself is not enough; without the marker, `/health` returns
+`coding_disabled`.
+
+Do not run the standard initialization wrapper for this MVP without reviewing
+its dry-run. On the tested upstream revision, standard mode planned more than
+100 repository changes.
+
+### Test minimal adoption without changing the PR checkout
+
+Use a disposable detached worktree first:
 
 ```bash
-scripts/repo-harness-mcp/20-initialize-repo-harness.sh \
-  --repo ~/nix-config \
-  --dry-run
+cd ~/nix-config
+MVP_WORKTREE=/tmp/nix-config-rh-mvp
+
+git worktree add --detach "$MVP_WORKTREE" HEAD
+repo-harness init \
+  --repo "$MVP_WORKTREE" \
+  --mode minimal \
+  --no-codegraph
 ```
 
-Apply only after reviewing the generated repository contract:
+On Repo Harness `0.12.0` from upstream commit
+`1789a75100bc767c991104c32df39478ff3bbf32`, this bounded mode created 11
+untracked files plus a small `.gitignore` update. It preserved the required
+`.gitkeep` sentinels in `.ai/harness/worktrees/` and `.ai/harness/runs/`.
+
+Verify adoption from inside that worktree:
 
 ```bash
-scripts/repo-harness-mcp/20-initialize-repo-harness.sh \
-  --repo ~/nix-config \
-  --apply
+env -C "$MVP_WORKTREE" repo-harness status --json
 ```
+
+Require:
+
+```text
+.repo.optIn == true
+.repo.optInMarker == ".ai/harness/workflow-contract.json"
+```
+
+### Known minimal-mode limitation
+
+The tested `repo-harness init --mode minimal` currently exits nonzero during its
+final `check-task-workflow --strict` step. Minimal mode writes a full workflow
+contract but intentionally omits many standard-mode directories, templates,
+policy files, architecture references, and deployment files that the strict
+checker requires.
+
+This distinction matters:
+
+- **MCP adoption is valid:** `repo-harness status` reports `optIn: true` and a
+  temporary loopback coding server starts successfully for an explicit
+  `read_write` grant.
+- **Full Repo Harness workflow compliance is not valid:** the strict workflow
+  check fails until standard adoption artifacts are installed.
+
+Treat the nonzero initialization result as a known upstream minimal-mode
+inconsistency, not as proof that Coding MCP is broken. Do not hide the failure
+or claim the repository passes the strict workflow gate.
+
+### Applying adoption to `~/nix-config`
+
+The configured `m1-min` service targets `~/nix-config`; adopting only a
+disposable worktree does not enable that service. After reviewing the disposable
+diff, either:
+
+1. commit the bounded minimal-adoption files to PR #9; or
+2. deliberately adopt the full standard workflow in a separate follow-up.
+
+Do not copy only the marker file. Keep the generated minimal set together so the
+repository contract and its scaffolding remain internally understandable.
+
+### Allowed and prohibited operations
+
+Allowed:
+
+- preview initialization before applying it;
+- test adoption in a detached disposable worktree;
+- grant only an adopted, canonical repository path;
+- use `read_write` only for the repository intended for the coding canary;
+- keep MCP bound to `127.0.0.1` and expose it only through authenticated HTTPS;
+- open managed workspaces from an exact commit SHA;
+- test a harmless read, patch, targeted command, and diff;
+- verify that `../outside` traversal is rejected;
+- remove the disposable worktree after preserving non-secret evidence.
+
+Prohibited:
+
+- do not grant `/Users/test`, `/tmp`, `/`, or another broad parent directory;
+- do not expose port `8765` on `0.0.0.0` or a LAN interface;
+- do not commit `~/.repo-harness`, OAuth URLs, passphrases, codes, or tokens;
+- do not hand-edit authorization revisions in Repo Harness state;
+- do not run imperative CodeGraph installers over the Nix-managed installation;
+- do not treat CodeGraph indexing as a prerequisite for the MCP coding MVP;
+- do not bypass managed-worktree isolation or traversal checks;
+- do not claim strict workflow compliance after minimal adoption.
+
+## Verified MCP gates
+
+### Disposable local test
+
+A disposable adopted worktree was registered with explicit `read_write` access,
+the user-scoped setup was refreshed through `repo-harness mcp setup chatgpt`, and
+a short-lived server was started on `127.0.0.1:8876`. Validation returned:
+
+```text
+/health status              ok
+profile                     coding
+workspaceCoder              true
+auth                        oauth
+OAuth protected-resource    HTTP 200
+```
+
+The test used an alternate port and did not touch the PR checkout. Config and
+OAuth token files were restored afterward. Repo Harness `0.12.0` exposes
+`mcp access set` but no revoke command, so deleting the disposable worktree can
+leave an unusable path entry in `registered-repos.json`; do not hand-edit the
+registry or its authorization revision to remove it.
+
+### Adopted `m1-min` checkout and public transport
+
+After applying the reviewed minimal set to `~/nix-config`, the real launchd
+service passed local health and OAuth discovery on `127.0.0.1:8765`. The
+supported `rh-mcp-quick-restart` path then passed:
+
+```text
+HTTP/2 tunnel registration          PASS
+20-second publication grace         PASS
+five pre-bootstrap probes           PASS (HTTP 421 expected)
+public health after bootstrap       PASS
+config_ready                        PASS
+local_ready                         PASS
+tunnel_ready                        PASS
+oauth_ready (DCR + PKCE)            PASS
+mcp_ready (exact 24-tool schema)     PASS
+```
+
+A separate `rh-mcp-quick-test` run also passed. Quick Tunnel URLs are ephemeral,
+so obtain the current value with `rh-mcp-quick-url` rather than copying a URL
+from this guide.
+
+This proves adoption, explicit access, loopback service, authenticated public
+transport, OAuth protocol readiness, and MCP schema readiness. The remaining
+manual MVP gate is a visible ChatGPT tool invocation followed by the isolated
+read/write/command/diff canary and the rejected `../outside` traversal test.
 
 ## Default Quick Tunnel workflow
 
