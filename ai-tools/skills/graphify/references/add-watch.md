@@ -1,56 +1,31 @@
-# graphify reference: add a URL and watch a folder
+# Graphify reference: add and watch
 
-Load this when the user asks to add a URL to the corpus or use watch mode. This is a generated upstream Claude slash-command reference; in Zed, adapt `/graphify add` and `/graphify --update` examples to the configured wrappers or `nix run <nix-config-flake>#graphify-*` commands. Neither flow is part of the default build.
+Version scope: Graphify revision `0b2bd938c4a48e91d27f0ba09b96409e0a36c78a`. Recheck `graphify --help` before use.
 
-## For /graphify add
+## Add a URL (opt-in)
 
-Fetch a URL and add it to the corpus, then update the graph.
-
-```bash
-$(cat graphify-out/.graphify_python) -c "
-import sys
-from graphify.ingest import ingest
-from pathlib import Path
-
-try:
-    out = ingest('URL', Path('./raw'), author='AUTHOR', contributor='CONTRIBUTOR')
-    print(f'Saved to {out}')
-except ValueError as e:
-    print(f'error: {e}', file=sys.stderr)
-    sys.exit(1)
-except RuntimeError as e:
-    print(f'error: {e}', file=sys.stderr)
-    sys.exit(1)
-"
-```
-
-Replace `URL` with the actual URL, `AUTHOR` with the user's name if provided, `CONTRIBUTOR` likewise. If the command exits with an error, tell the user what went wrong - do not silently continue. After a successful save, automatically run the `--update` pipeline on `./raw` to merge the new file into the existing graph.
-
-Supported URL types (auto-detected):
-- YouTube / any video URL → audio downloaded via yt-dlp, transcribed to `.txt` on next run (requires `pip install 'graphifyy[video]'`)
-- Twitter/X → fetched via oEmbed, saved as `.md` with tweet text and author
-- arXiv → abstract + metadata saved as `.md`
-- PDF → downloaded as `.pdf`
-- Images (.png/.jpg/.webp) → downloaded; semantic/vision extraction may happen on the next run if explicitly enabled
-- Any webpage → converted to markdown via html2text
-
----
-
-## For --watch
-
-Start a background watcher that monitors a folder and auto-updates the graph when files change.
+`add` fetches external content into a corpus and may require network access, API keys, or format-specific extras. Use it only when the user explicitly requests non-code ingestion.
 
 ```bash
-python3 -m graphify.watch INPUT_PATH --debounce 3
+graphify add <url> --dir <project>/raw
+# optional metadata:
+graphify add <url> --dir <project>/raw --author "Name" --contributor "Name"
 ```
 
-Replace INPUT_PATH with the folder to watch. Behavior depends on what changed:
+After a successful add, inspect what was downloaded before updating. Documents, PDFs, images, audio, and video are semantic inputs; do not process them in an offline code-only workflow.
 
-- **Code files only (.py, .ts, .go, etc.):** re-runs AST extraction + rebuild + cluster immediately, no LLM needed. `graph.json` and `GRAPH_REPORT.md` are updated automatically.
-- **Docs, papers, or images:** writes a `graphify-out/needs_update` flag and prints a notification to run `/graphify --update` (LLM semantic re-extraction required).
+## Watch code changes
 
-Debounce (default 3s): waits until file activity stops before triggering, so a wave of parallel agent writes doesn't trigger a rebuild per file.
+```bash
+graphify watch /absolute/path/to/project
+```
 
-Press Ctrl+C to stop.
+Watch is a foreground process; stop it with Ctrl+C. It is intended for code refreshes. If it reports pending semantic inputs, do not enable providers automatically—ask the user, then confirm required network access, API keys, and extras.
 
-For agentic workflows: run `--watch` in a background terminal. Code changes from agent waves are picked up automatically between waves. If agents are also writing docs or notes, you'll need a manual `/graphify --update` after those waves.
+For a one-shot code refresh, prefer:
+
+```bash
+graphify-update /absolute/path/to/project
+```
+
+`graphify-update` does **not** support `--code-only`; `update` is already the code-update path at this revision. Never invoke `graphify-out/.graphify_python`.

@@ -232,11 +232,16 @@ Prefer Graphify for:
 
 - existing `graphify-out/graph.json` workflows;
 - explicit graph traversal and community analysis;
-- reports and exports already built around Graphify;
+- reports and exports advertised by the currently pinned Graphify CLI;
 - repository workflows that require Graphify's graph schema.
 
-Running both increases CPU, memory, disk use, and agent context. If one tool is
-sufficient for a project, initialize only that tool there.
+Graphify is snapshot-based in this configuration: run `graphify-update` after
+code changes and restart its MCP process after rebuilding the graph. CodeGraph
+uses its own watched `.codegraph/` index. Running both increases CPU, memory,
+disk use, and agent context. If one tool is sufficient for a project, initialize
+only that tool there.
+
+See `docs/graphify-new-repository.md` for the tested `m1-min` Graphify workflow.
 
 ## Allowed operations
 

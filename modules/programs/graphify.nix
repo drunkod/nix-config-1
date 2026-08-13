@@ -1,5 +1,8 @@
 { inputs, ... }:
 
+let
+  graphifyRevision = inputs.graphify-src.rev;
+in
 {
   perSystem =
     { pkgs, ... }:
@@ -45,10 +48,13 @@
       # expanded mcp==1.26.0 argument. Keep the full upstream check while
       # correcting that generated-script assertion.
       checks.graphify-skill = graphify.checks.skill.overrideAttrs (old: {
-        buildCommand = builtins.replaceStrings
-          [ "grep -Fq 'mcp==1.26.0'" ]
-          [ "grep -Fq 'mcp_version=\"1.26.0\"'" ]
-          old.buildCommand;
+        buildCommand =
+          builtins.replaceStrings [ "grep -Fq 'mcp==1.26.0'" ] [ "grep -Fq 'mcp_version=\"1.26.0\"'" ]
+            old.buildCommand
+          + ''
+            grep -Fq 'readonly default_revision="${graphifyRevision}"' \
+              ${../../scripts/graphify-sandbox.sh}
+          '';
       });
 
       devShells.graphify = graphify.devShells.default;

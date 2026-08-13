@@ -10,7 +10,8 @@
     let
       graphifyPackages = inputs.self.packages.${pkgs.system};
 
-      mkMcpScript = name: body:
+      mkMcpScript =
+        name: body:
         lib.getExe (
           pkgs.writeShellScriptBin name ''
             set -euo pipefail
@@ -31,13 +32,6 @@
     {
       imports = [
         inputs.mcp-servers-nix.homeManagerModules.default
-      ];
-
-      home.packages = [
-        graphifyPackages.graphify-mcp-find-graph
-        graphifyPackages.graphify-mcp-set-graph
-        graphifyPackages.graphify-mcp-run
-        graphifyPackages.graphify-mcp-saved
       ];
 
       programs.mcp = {

@@ -5,7 +5,6 @@ This guide shows how to wire the `pp-t3` / ProxyPilot t3.chat launcher into the 
 Target branch and profile:
 
 - Repo: `drunkod/nix-config-1`
-- Branch: `fix-graphify-mcp-init`
 - Host profile: `m1-min`
 - System: `aarch64-darwin`
 - User in the current profile: `test`
