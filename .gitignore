@@ -66,9 +66,11 @@ tasks/.current.md.tmp.*
 .ai/harness/active-plan
 .ai/harness/active-worktree
 .ai/harness/sprint/
-.ai/harness/worktrees/
+.ai/harness/worktrees/*
+!.ai/harness/worktrees/.gitkeep
 .ai/harness/evidence/
-.ai/harness/runs/
+.ai/harness/runs/*
+!.ai/harness/runs/.gitkeep
 .ai/harness/state/
 .ai/harness/chatgpt/browser-lock.json
 .ai/harness/chatgpt/tmp/
