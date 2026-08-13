@@ -9,11 +9,13 @@ The second stage is intentional. The upstream CLI is currently managed as mutabl
 
 ## Start here
 
-Use the three guides in order:
+Use the five guides in order:
 
-1. [`docs/repo-harness-01-onboard-repository.md`](docs/repo-harness-01-onboard-repository.md) — clone/create a repository, define `.ignore`, preview and commit adoption, grant access, and refresh OAuth.
-2. [`docs/repo-harness-02-daily-workflow.md`](docs/repo-harness-02-daily-workflow.md) — run the read-only canary, select the exact `repo_id` and base SHA, open a managed worktree, edit, validate, review, and clean up.
-3. [`docs/repo-harness-03-operations-security-troubleshooting.md`](docs/repo-harness-03-operations-security-troubleshooting.md) — operate the Quick Tunnel/OAuth service, understand allowed and prohibited actions, and recover from common failures.
+1. [`docs/repo-harness-01-onboard-repository.md`](docs/repo-harness-01-onboard-repository.md) — clone/create a repository, define `.ignore`, preview and commit adoption, and grant exact repository access.
+2. [`docs/repo-harness-02-initialize-codegraph.md`](docs/repo-harness-02-initialize-codegraph.md) — initialize the Nix-managed CodeGraph index for the source checkout and understand per-worktree indexing.
+3. [`docs/repo-harness-03-start-quick-tunnel.md`](docs/repo-harness-03-start-quick-tunnel.md) — start or reuse the Quick Tunnel, refresh OAuth, run visible canaries, and open the first managed workspace.
+4. [`docs/repo-harness-04-daily-workflow.md`](docs/repo-harness-04-daily-workflow.md) — work in a managed worktree, initialize its own CodeGraph index, edit, validate, review, and clean up.
+5. [`docs/repo-harness-05-operations-security-troubleshooting.md`](docs/repo-harness-05-operations-security-troubleshooting.md) — understand allowed/prohibited actions and recover from common failures.
 
 The older Browser Engine, Browser Create, full `m1-min`, and Quick Tunnel documents are specialist references. They are not the default onboarding path.
 

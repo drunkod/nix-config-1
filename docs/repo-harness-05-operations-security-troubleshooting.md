@@ -1,4 +1,4 @@
-# 3. Repo Harness operations, security, and troubleshooting
+# 5. Repo Harness operations, security, and troubleshooting
 
 Use this guide to operate the shared `m1-min` Coding MCP service, recover from
 common failures, and understand what it may and may not do.
@@ -19,12 +19,15 @@ common failures, and understand what it may and may not do.
 
 ```bash
 repo-harness --version
-rh-mcp-quick-restart
-rh-mcp-quick-test
-rh-mcp-quick-url
+repo-harness-mcp-quick-restart
+repo-harness-mcp-quick-test
+repo-harness-mcp-quick-url
 ```
 
-`rh-mcp-quick-restart`:
+Use canonical `repo-harness-mcp-*` binaries in scripts and non-interactive
+shells. The shorter `rh-mcp-*` names are interactive Zsh aliases.
+
+`repo-harness-mcp-quick-restart`:
 
 1. requires or restarts loopback MCP;
 2. replaces the matching Quick Tunnel;
@@ -43,7 +46,7 @@ one tunnel alive long enough for its hostname to publish.
 Print the current ephemeral MCP URL:
 
 ```bash
-rh-mcp-quick-url
+repo-harness-mcp-quick-url
 ```
 
 In the ChatGPT developer-mode app:
@@ -56,7 +59,7 @@ In the ChatGPT developer-mode app:
 6. run:
 
 ```bash
-rh-mcp-auth
+repo-harness-mcp-chatgpt-auth
 ```
 
 The helper clears the clipboard, validates the current public origin, PKCE
@@ -94,7 +97,7 @@ mcp_ready = true
 ### End-to-end current endpoint
 
 ```bash
-rh-mcp-quick-test
+repo-harness-mcp-quick-test
 ```
 
 A healthy server is not proof of ChatGPT invocation. Require a visible tool
@@ -203,7 +206,7 @@ Check all three prerequisites:
 ```bash
 repo-harness status --json
 repo-harness mcp access set --repo "$PWD" --mode read_write --json
-rh-mcp-quick-restart
+repo-harness-mcp-quick-restart
 ```
 
 Do not solve this by copying only the marker into an unrelated checkout.
@@ -240,7 +243,7 @@ Do not hide the failure.
 - use a base commit containing adoption.
 
 Resolve one exact ID locally if discovery omits it; do not expose the whole
-registry. See guide 2.
+registry. See guide 4.
 
 ### Workspace opened from the wrong state
 
@@ -263,8 +266,8 @@ or explicitly discard the work before retrying. There is no remote delete tool.
 This is normal. Run:
 
 ```bash
-rh-mcp-quick-restart
-rh-mcp-quick-url
+repo-harness-mcp-quick-restart
+repo-harness-mcp-quick-url
 ```
 
 Then update the ChatGPT app, reauthorize, and repeat the read-only canary in a
@@ -272,7 +275,7 @@ fresh chat.
 
 ### Tunnel is green but ChatGPT calls no tools
 
-If `rh-mcp-quick-test` and the live doctor pass, classify this as a ChatGPT
+If `repo-harness-mcp-quick-test` and the live doctor pass, classify this as a ChatGPT
 surface/invocation problem first. Refresh the app schema, start a fresh chat,
 and require an explicit single-tool prompt. Model prose is not evidence.
 
@@ -286,13 +289,30 @@ Common causes:
 - ChatGPT app schema/session not refreshed.
 
 Generate one current tunnel, update the app URL, start a fresh sign-in, and run
-`rh-mcp-auth` with the newly copied authorization URL. Do not reuse old URLs.
+`repo-harness-mcp-chatgpt-auth` with the newly copied authorization URL. Do not reuse old URLs.
 
 ### CodeGraph is missing or stale
 
 CodeGraph is optional navigation metadata, not an MCP authorization gate. A code
 mutation can succeed even when index refresh fails. Do not repeat the mutation.
 Repair or refresh indexing separately using the Nix-managed installation.
+
+Initialize the canonical source checkout with:
+
+```bash
+codegraph init /absolute/path/to/repository
+codegraph status /absolute/path/to/repository
+```
+
+This does not initialize future managed worktrees. In worktree mode, approve the
+following exact command in each newly opened workspace before its first patch:
+
+```text
+codegraph init .
+```
+
+Then use `codegraph sync .` for later refreshes. `open_workspace` does not copy
+or initialize `.codegraph/`.
 
 ### Graphify selects the wrong graph
 
@@ -307,7 +327,7 @@ Never silently fall back to another repository graph. See
 
 ## Specialist references
 
-Use these only after the three-guide workflow is understood:
+Use these only after the numbered onboarding workflow is understood:
 
 - [`repo-harness-mcp-coding-m1-min.md`](repo-harness-mcp-coding-m1-min.md) — full
   implementation and target-Mac validation details;

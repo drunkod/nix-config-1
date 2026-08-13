@@ -181,6 +181,28 @@ fixture test showed that CodeGraph can accept a copied index without reporting a
 worktree mismatch, so automatic mismatch detection must not be treated as a
 safety boundary.
 
+### Repo Harness managed worktrees
+
+Repo Harness `open_workspace` does not initialize or copy CodeGraph state. Its
+post-mutation refresh targets the managed worktree root, not the registered
+source checkout. Initializing `/absolute/path/to/project` therefore does not
+initialize a later opaque managed workspace.
+
+After opening each Repo Harness worktree, and before its first patch, approve one
+exact workspace command:
+
+```text
+codegraph init .
+```
+
+Use `codegraph status . --json` to verify it and `codegraph sync .` for later
+refreshes. Do not ask ChatGPT to reveal the opaque worktree path; the approved
+workspace command starts from the correct root.
+
+If an `apply_patch` mutation succeeds but reports `CodeGraph index is not
+initialized for this repo`, do not repeat the patch. Initialize the workspace
+index separately because the source mutation already happened.
+
 ## Monorepos
 
 Choose one indexing boundary deliberately.

@@ -4,7 +4,8 @@ Use this guide when you have a Git repository on the `m1-min` Mac and want
 Repo Harness to read or modify it through the existing Coding MCP service.
 
 This guide is the default starting point. Do not begin with the Browser Engine,
-named Cloudflare tunnels, CodeGraph, Graphify, or the full strict workflow.
+named Cloudflare tunnels, Graphify, or the full strict workflow. Initialize
+CodeGraph only after adoption by continuing to guide 2.
 
 ## The two repositories have different jobs
 
@@ -188,6 +189,10 @@ repo-harness init \
   --no-codegraph
 ```
 
+Minimal adoption derives the initial `docs/spec.md` product title from the target
+directory name. When adoption runs in a disposable worktree, review and correct
+that generated title before committing it.
+
 Then inspect what was created:
 
 ```bash
@@ -213,13 +218,21 @@ scaffolding together.
 The exact base commit used by `open_workspace` must contain the adoption files.
 A worktree opened from a pre-adoption commit is not adopted.
 
-Commit the reviewed adoption on a branch:
+Commit the reviewed adoption on a branch. Stage the explicit reviewed paths;
+do not use `git add -A` when unrelated local state exists:
 
 ```bash
 git switch -c chore/adopt-repo-harness
-git add -A
+git add -- .gitignore .ignore .ai docs/spec.md plans tasks
+git diff --cached --check
 git commit -m "chore: adopt repo-harness workflow"
 ```
+
+For a long-lived feature branch, create an isolated adoption worktree from the
+feature branch's exact SHA. After committing adoption there, verify it is a
+direct descendant and fast-forward the original feature branch with
+`git merge --ff-only <adoption-sha>`. Do not mix adoption into a different base,
+force-push, or copy `.ai` files manually.
 
 For standard adoption, verify a fresh detached worktree:
 
@@ -266,32 +279,20 @@ repo-harness mcp access set \
 Do not grant `/`, `/Users/test`, `~/src`, `/tmp`, or another parent containing
 multiple projects. Grant one canonical Git repository path at a time.
 
-## Step 7: refresh the coding authorization
+## Step 7: record the authorization change
 
 Repository access changes advance the authorization revision. Existing OAuth
 sessions are then stale by design.
 
-On `m1-min`, first ensure the Quick Tunnel is running:
+Do not start or replace the tunnel in this onboarding guide. Record the returned
+`authorizationRevision`, continue to CodeGraph initialization in guide 2, then
+refresh the MCP setup and ChatGPT OAuth in guide 3.
 
-```bash
-rh-mcp-quick-restart
-rh-mcp-quick-test
-```
-
-This refreshes the user-scoped Coding MCP setup, restarts the service, and
-requires all live doctor layers to pass. Then update the ChatGPT app to the exact
-current URL:
-
-```bash
-rh-mcp-quick-url
-```
-
-Complete OAuth again with `rh-mcp-auth` as described in guide 3.
-
-## Step 8: optional indexes
+## Step 8: initialize optional indexes
 
 Only after repository access works should you add code indexes.
 
+- Continue with [`repo-harness-02-initialize-codegraph.md`](repo-harness-02-initialize-codegraph.md).
 - CodeGraph is installed declaratively by `nix-config`; do not run imperative
   `codegraph install` or `codegraph upgrade` over it.
 - Graphify uses one separate graph per repository/worktree. Follow
@@ -308,9 +309,8 @@ Only after repository access works should you add code indexes.
 [ ] adoption files are committed
 [ ] repo-harness status reports optIn=true
 [ ] exact repository path has read_only or read_write access
-[ ] Quick Tunnel and live doctor pass
-[ ] ChatGPT has been reauthorized after the latest access revision
+[ ] latest authorization revision was recorded for guide 3
 [ ] exact adoption commit SHA is available for open_workspace
 ```
 
-Continue with [`repo-harness-02-daily-workflow.md`](repo-harness-02-daily-workflow.md).
+Continue with [`repo-harness-02-initialize-codegraph.md`](repo-harness-02-initialize-codegraph.md).

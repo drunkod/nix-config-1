@@ -1,6 +1,6 @@
 # Repo Harness MCP coding profile on `m1-min`
 
-> Specialist reference. Start with [`repo-harness-01-onboard-repository.md`](repo-harness-01-onboard-repository.md), then [`repo-harness-02-daily-workflow.md`](repo-harness-02-daily-workflow.md). Use this document for implementation and target-Mac validation details.
+> Specialist reference. Start with [`repo-harness-01-onboard-repository.md`](repo-harness-01-onboard-repository.md), [`repo-harness-02-initialize-codegraph.md`](repo-harness-02-initialize-codegraph.md), and [`repo-harness-03-start-quick-tunnel.md`](repo-harness-03-start-quick-tunnel.md). Use this document for implementation and target-Mac validation details.
 
 This runbook configures the Repo Harness `coding` profile on the Apple Silicon
 `m1-min` host with a loopback MCP server and a Cloudflare public endpoint.

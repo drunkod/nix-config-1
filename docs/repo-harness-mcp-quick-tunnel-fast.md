@@ -1,6 +1,6 @@
 # Fast Repo Harness MCP Quick Tunnel workflow
 
-> Specialist reference. For normal onboarding and daily work, start with [`repo-harness-01-onboard-repository.md`](repo-harness-01-onboard-repository.md) and [`repo-harness-02-daily-workflow.md`](repo-harness-02-daily-workflow.md). Use this document when operating or diagnosing the tunnel itself.
+> Specialist reference. For normal onboarding and daily work, start with [`repo-harness-01-onboard-repository.md`](repo-harness-01-onboard-repository.md) and [`repo-harness-03-start-quick-tunnel.md`](repo-harness-03-start-quick-tunnel.md). Use this document when operating or diagnosing the tunnel itself.
 
 This is the **default** operator path for the `m1-min` Repo Harness `coding`
 MCP. It uses an ephemeral `*.trycloudflare.com` Quick Tunnel and requires no

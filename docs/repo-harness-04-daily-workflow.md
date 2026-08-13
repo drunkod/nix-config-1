@@ -1,4 +1,4 @@
-# 2. Daily work with Repo Harness Coding MCP
+# 4. Daily work with Repo Harness Coding MCP
 
 Use this guide after the repository is adopted, committed, and explicitly
 registered. It describes the normal work loop, not installation or emergency
@@ -24,11 +24,14 @@ user for shell commands. A repository grant is not a shell sandbox.
 ## Step 1: verify the service before each session
 
 ```bash
-rh-mcp-quick-test
-rh-mcp-quick-url
+repo-harness-mcp-quick-test
+repo-harness-mcp-quick-url
 ```
 
-`rh-mcp-quick-test` must report all five layers green:
+The `rh-mcp-*` forms are interactive Zsh aliases and may be unavailable in
+non-interactive shells.
+
+`repo-harness-mcp-quick-test` must report all five layers green:
 
 ```text
 config_ready
@@ -137,6 +140,14 @@ Before allowing edits, inspect the returned:
 The remote tool intentionally does not reveal the local managed-worktree path.
 Do not ask ChatGPT to discover that path through shell commands.
 
+At the pinned upstream revision, `open_workspace` should persist managed
+workspaces to the same state read by `repo-harness mcp workspaces list --json`.
+A live validation nevertheless returned an empty local list while the MCP
+workspace ID remained usable. Treat that as an observed state/installation
+discrepancy: preserve the `open_workspace` response as immediate evidence, do
+not assume local cleanup will work, and investigate the active CLI/service state
+before discarding the workspace.
+
 Stop if the base SHA, repository, or instructions are not what you approved.
 
 ## Step 6: make the task bounded
@@ -166,7 +177,24 @@ repo-harness state resolve \
 
 The resolved workflow may raise the task to Standard or Strict.
 
-## Step 7: inspect before editing
+## Step 7: initialize CodeGraph in a new managed worktree
+
+A source-checkout `.codegraph/` index is not copied into an ignored managed
+worktree, and `open_workspace` does not initialize one. Before the first patch,
+approve one exact workspace command:
+
+```text
+codegraph init .
+```
+
+Verify with `codegraph status . --json` when needed. This uses `exec_command`,
+which has local-user shell authority, so do not combine it with unrelated setup
+or source changes.
+
+If a patch was already applied and only its index refresh failed, do not repeat
+the patch. Initialize/sync CodeGraph separately; the mutation already happened.
+
+## Step 8: inspect before editing
 
 Within the managed workspace:
 
@@ -179,7 +207,7 @@ Within the managed workspace:
 CodeGraph and Graphify may help navigate the code, but their output must be
 verified against source. A missing/stale index does not authorize guessing.
 
-## Step 8: edit and validate
+## Step 9: edit and validate
 
 Use `apply_patch` for bounded file changes. Use `exec_command` only for commands
 that are necessary and understood.
@@ -203,7 +231,7 @@ Shell safety:
 A mutation may succeed even if CodeGraph refresh fails. Do not repeat the write
 just to repair indexing. Refresh the index separately.
 
-## Step 9: run the traversal negative test for a new setup
+## Step 10: run the traversal negative test for a new setup
 
 Before trusting a newly registered repository, ask for one harmless denied read:
 
@@ -216,7 +244,7 @@ Report the exact denial and stop.
 Expected: traversal is rejected. Any successful outside read is a security
 failure; stop the session and downgrade repository access.
 
-## Step 10: review the result
+## Step 11: review the result
 
 Require ChatGPT to show:
 
@@ -236,7 +264,7 @@ Do not accept “looks good” without the actual diff and validation evidence.
 Editing, committing, pushing, opening a PR, and merging are separate approval
 boundaries. The default task should stop before commit and push.
 
-## Step 11: preserve or discard deliberately
+## Step 12: preserve or discard deliberately
 
 List managed workspaces locally:
 
@@ -265,11 +293,12 @@ Never force-clean a workspace merely to make a status command green.
 ## Daily checklist
 
 ```text
-[ ] rh-mcp-quick-test is green
+[ ] repo-harness-mcp-quick-test is green
 [ ] ChatGPT produced visible tool events
 [ ] exact repository and repo_id selected
 [ ] exact adopted base SHA selected
 [ ] managed worktree mode used
+[ ] CodeGraph initialized in this managed worktree before its first patch
 [ ] applicable instructions read
 [ ] allowed and forbidden paths stated
 [ ] only bounded changes made
@@ -280,4 +309,4 @@ Never force-clean a workspace merely to make a status command green.
 ```
 
 For OAuth, tunnel, authorization, security, and recovery problems, continue with
-[`repo-harness-03-operations-security-troubleshooting.md`](repo-harness-03-operations-security-troubleshooting.md).
+[`repo-harness-05-operations-security-troubleshooting.md`](repo-harness-05-operations-security-troubleshooting.md).
