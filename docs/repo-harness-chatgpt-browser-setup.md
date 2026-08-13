@@ -1,5 +1,7 @@
 # Repo-harness ChatGPT Browser setup
 
+> Separate optional workflow. This Browser Engine + GitHub app path is not Coding MCP. For local managed-workspace coding, start with [`repo-harness-01-onboard-repository.md`](repo-harness-01-onboard-repository.md) and [`repo-harness-02-daily-workflow.md`](repo-harness-02-daily-workflow.md).
+
 This guide continues after the `m1-min` repo-harness bootstrap and repository adoption described in [`../REPO-HARNESS.md`](../REPO-HARNESS.md).
 
 It configures the smallest useful workflow:

@@ -7,6 +7,29 @@ This configuration uses a two-stage repo-harness installation:
 
 The second stage is intentional. The upstream CLI is currently managed as mutable Bun state rather than as a pinned Nix package.
 
+## Start here
+
+Use the three guides in order:
+
+1. [`docs/repo-harness-01-onboard-repository.md`](docs/repo-harness-01-onboard-repository.md) — clone/create a repository, define `.ignore`, preview and commit adoption, grant access, and refresh OAuth.
+2. [`docs/repo-harness-02-daily-workflow.md`](docs/repo-harness-02-daily-workflow.md) — run the read-only canary, select the exact `repo_id` and base SHA, open a managed worktree, edit, validate, review, and clean up.
+3. [`docs/repo-harness-03-operations-security-troubleshooting.md`](docs/repo-harness-03-operations-security-troubleshooting.md) — operate the Quick Tunnel/OAuth service, understand allowed and prohibited actions, and recover from common failures.
+
+The older Browser Engine, Browser Create, full `m1-min`, and Quick Tunnel documents are specialist references. They are not the default onboarding path.
+
+The default workflow is:
+
+```text
+existing Git repository
+  -> reviewed Repo Harness adoption
+    -> explicit per-repository access
+      -> authenticated Coding MCP
+        -> isolated managed worktree
+          -> bounded edit, targeted check, and human-reviewed diff
+```
+
+Do not confuse this with the separate Browser Engine + GitHub app Create/Review workflow.
+
 ## Initial setup
 
 Rebuild the host configuration:

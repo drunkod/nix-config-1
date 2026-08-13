@@ -1,5 +1,7 @@
 # Repo-harness ChatGPT Browser Create pre-tutorial
 
+> Historical specialist test notes for the optional Browser Create workflow. This is not the normal Coding MCP onboarding path. Start with [`repo-harness-01-onboard-repository.md`](repo-harness-01-onboard-repository.md).
+
 This pre-tutorial records the working setup sequence and the failure modes found during the first isolated `browser-create` smoke-test preparation on macOS.
 
 Use it before the full workflow in [`repo-harness-chatgpt-browser-setup.md`](./repo-harness-chatgpt-browser-setup.md).
