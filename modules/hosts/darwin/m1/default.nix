@@ -23,6 +23,7 @@ let
     inputs.sops-nix.homeManagerModules.sops
     sops
     config.flake.modules.homeManager."claude-code"
+    config.flake.modules.homeManager.codegraph
     config.flake.modules.homeManager.zed
     mcp
     zsh
