@@ -9,7 +9,12 @@ The second stage is intentional. The upstream CLI is currently managed as mutabl
 
 ## Start here
 
-Use the five guides in order:
+For the fast path, choose a mode in
+[`docs/repo-harness-quick-start.md`](docs/repo-harness-quick-start.md): Planner,
+Coding, Browser Engine/Create, Quick Tunnel, Named Tunnel, or website workflow
+mapping.
+
+Use the five detailed guides only when you need the full reasoning:
 
 1. [`docs/repo-harness-01-onboard-repository.md`](docs/repo-harness-01-onboard-repository.md) — clone/create a repository, define `.ignore`, preview and commit adoption, and grant exact repository access.
 2. [`docs/repo-harness-02-initialize-codegraph.md`](docs/repo-harness-02-initialize-codegraph.md) — initialize the Nix-managed CodeGraph index for the source checkout and understand per-worktree indexing.

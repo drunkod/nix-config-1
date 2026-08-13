@@ -1,34 +1,129 @@
-# Repo Harness MCP coding scripts
+# Repo Harness MCP scripts: support status
 
-These scripts are the small, reviewable prototype used to translate the
-upstream manual coding-profile tutorial into the `m1-min` Nix configuration.
-They intentionally separate local state, long-running processes, Cloudflare
-account changes, DNS changes, and ChatGPT UI work.
+This directory is a historical coding + named-Cloudflare-tunnel prototype. It is
+**not** the current default `m1-min` setup sequence.
 
-The durable `m1-min` processes are managed by the Home Manager modules:
+Start with [`../../docs/repo-harness-quick-start.md`](../../docs/repo-harness-quick-start.md).
 
-- `services.repo-harness-mcp`;
-- `services.cloudflared-mcp-tunnel`.
+## Current default commands
 
-The foreground start scripts remain useful for diagnosis. Interactive and
-external operations remain explicit bootstrap steps because they cannot be
-made safely declarative without introducing credentials or account authority
-into the Nix build.
+Nix-generated helpers own the normal Coding + Quick Tunnel workflow:
 
-## Order
+```bash
+repo-harness-mcp-quick-restart
+repo-harness-mcp-quick-test
+repo-harness-mcp-quick-url
+repo-harness-mcp-chatgpt-auth
+repo-harness-mcp-bootstrap
+repo-harness-mcp-restart
+repo-harness-mcp-health
+repo-harness-mcp-doctor
+```
 
-1. `00-check-prerequisites.sh`
-2. `10-check-dependencies.sh`
-3. `20-initialize-repo-harness.sh --repo /path --dry-run`
-4. `20-initialize-repo-harness.sh --repo /path --apply`
-5. `60-cloudflare-login.sh`
-6. `70-cloudflare-create-tunnel.sh --name repo-harness-coding`
-7. `80-cloudflare-configure-dns.sh --tunnel UUID --hostname HOST`
-8. `90-cloudflare-write-config.sh ... --dry-run`
-9. `30-configure-mcp-coding-profile.sh --repo /path --endpoint https://HOST/mcp --dry-run`
-10. Apply both configuration commands, then use the Nix-managed services.
-11. `120-run-mcp-doctor.sh --repo /path`
-12. `130-run-coding-profile-smoke-test.sh --repo /path`
+Do not replace these with the old numbered sequence.
 
-`140-cleanup-or-rollback.sh` is dry-run by default. It never deletes a
-Cloudflare tunnel, DNS record, login certificate, or credentials file.
+## Script classification
+
+| Script | Status | Use |
+|---|---|---|
+| `lib.sh` | current shared library | Common validation helpers |
+| `00-check-prerequisites.sh` | diagnostic | Broad historical preflight; requires more than adoption needs |
+| `10-check-dependencies.sh` | diagnostic/redundant | Historical dependency check |
+| `20-initialize-repo-harness.sh` | superseded | Use explicit `repo-harness init --mode ... --no-codegraph` after reviewing `.ignore` |
+| `30-configure-mcp-coding-profile.sh` | superseded | Use `repo-harness-mcp-bootstrap` |
+| `40-start-local-mcp-server.sh` | diagnostic | Foreground Coding server investigation only |
+| `50-check-local-mcp-health.sh` | diagnostic | Prefer `repo-harness-mcp-health` |
+| `60-cloudflare-login.sh` | current optional | Named Tunnel Cloudflare login |
+| `70-cloudflare-create-tunnel.sh` | current optional | Create named Cloudflare tunnel |
+| `80-cloudflare-configure-dns.sh` | current optional | Add named-tunnel DNS route |
+| `90-cloudflare-write-config.sh` | superseded | Use `cloudflared-mcp-tunnel-init`; Nix owns runtime config generation |
+| `100-cloudflare-run-tunnel.sh` | diagnostic | Foreground named-tunnel troubleshooting only |
+| `110-configure-chatgpt-endpoint.sh` | superseded | It only wraps old script `30`; it cannot configure ChatGPT UI |
+| `120-run-mcp-doctor.sh` | diagnostic | Prefer `repo-harness-mcp-doctor` |
+| `130-run-coding-profile-smoke-test.sh` | diagnostic/obsolete gate | Prefer `repo-harness-mcp-quick-test` plus visible ChatGPT canaries |
+| `140-cleanup-or-rollback.sh` | limited cleanup | Stops services, can downgrade one repo, can remove old generated YAML; not a full rollback |
+
+## Current sequences
+
+### Repository adoption
+
+```bash
+cd /absolute/repository
+repo-harness init --mode minimal --no-codegraph --dry-run
+repo-harness init --mode minimal --no-codegraph --no-verify
+```
+
+Use `standard` for the full workflow contract. Applying `init` automatically
+registers the repository read-only, so review `.ignore` first.
+
+### Coding + Quick Tunnel
+
+```bash
+codegraph init "$PWD"
+repo-harness mcp access set --repo "$PWD" --mode read_write --json
+
+# First setup only: create enabled local config before the health-gated helper.
+repo-harness-mcp-bootstrap --repo "$PWD" --endpoint https://mcp.invalid/mcp
+repo-harness-mcp-restart
+
+repo-harness-mcp-quick-restart
+repo-harness-mcp-quick-test
+repo-harness-mcp-chatgpt-auth
+```
+
+Do not configure ChatGPT with the `mcp.invalid` bootstrap placeholder.
+
+Each managed worktree needs `codegraph init .` before its first patch.
+
+### Optional named tunnel
+
+```bash
+./60-cloudflare-login.sh
+./70-cloudflare-create-tunnel.sh --name repo-harness-coding
+./80-cloudflare-configure-dns.sh --tunnel <uuid> --hostname mcp.example.com
+
+cloudflared-mcp-tunnel-init \
+  --tunnel-id <uuid> \
+  --hostname mcp.example.com \
+  --credentials-file "$HOME/.cloudflared/<uuid>.json"
+```
+
+Enable the Nix named-tunnel module and rebuild **before** running
+`cloudflared-mcp-tunnel-init`, because that helper is installed only while the
+module is enabled. Then bootstrap the stable endpoint and restart the Nix
+services. Do not use scripts `90`/`100` as the managed service path.
+
+### Planner
+
+There are no Planner scripts here. The current `m1-min` service is Coding-only.
+Use a separate manually served Planner profile/port; see
+[`../../docs/repo-harness-planner-quick.md`](../../docs/repo-harness-planner-quick.md).
+
+### Browser Engine / GitHub Create
+
+There are no Browser Engine scripts here. Use the installed
+`repo-harness chatgpt browser-*` commands; see
+[`../../docs/repo-harness-browser-engine-quick.md`](../../docs/repo-harness-browser-engine-quick.md).
+
+## Cleanup limitations
+
+`140-cleanup-or-rollback.sh` is dry-run by default and never deletes external
+Cloudflare tunnels, DNS, certificates, or credentials. It also does not:
+
+- stop/remove helper-owned Quick Tunnel state;
+- undo repository adoption;
+- perform a Nix generation rollback;
+- remove OAuth/MCP config;
+- remove named-tunnel parameter state;
+- clean Repo Harness managed worktrees.
+
+Use it only for the actions shown by its dry run. For actual Nix rollback, use
+the platform's Nix generation rollback workflow.
+
+## Security
+
+- Keep MCP bound to loopback.
+- Never commit OAuth, Cloudflare, browser, or Repo Harness mutable state.
+- Never grant a broad parent directory.
+- Do not use shell commands to bypass Repo Harness path denials.
+- Do not repeat a successful mutation because only CodeGraph refresh failed.
