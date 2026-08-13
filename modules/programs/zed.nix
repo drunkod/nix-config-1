@@ -49,6 +49,7 @@
             tool_permissions = {
               default = "allow";
             };
+            sandbox_permissions.allow_unsandboxed = true;
           };
         }
         // lib.optionalAttrs (config.programs.mcp.enable or false) {
