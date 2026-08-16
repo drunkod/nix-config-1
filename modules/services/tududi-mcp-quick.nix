@@ -48,6 +48,18 @@
           health=${escapeShellArg healthBin}
           restart=${escapeShellArg restartBin}
 
+          is_tududi_tunnel_pid() {
+            candidate="$1"
+            case "$candidate" in
+              ""|*[!0-9]*) return 1 ;;
+            esac
+            cmd="$(/bin/ps -p "$candidate" -o command= 2>/dev/null || true)"
+            case "$cmd" in
+              *cloudflared*tunnel*"--url $local_origin"*) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
           for helper in "$health" "$restart"; do
             [ -x "$helper" ] || {
               echo "Tududi Quick Tunnel: required helper is unavailable: $helper" >&2
@@ -76,26 +88,29 @@
             }
           fi
 
+          # Stop the helper-owned tunnel from the previous run, but never trust
+          # a stale PID file enough to kill an unrelated process after PID reuse.
           if [ -f "$pid_file" ]; then
             old_pid="$(cat "$pid_file" 2>/dev/null || true)"
-            case "$old_pid" in
-              ""|*[!0-9]*) ;;
-              *)
-                if kill -0 "$old_pid" 2>/dev/null; then
-                  kill "$old_pid" 2>/dev/null || true
-                  for _ in $(seq 1 10); do
-                    kill -0 "$old_pid" 2>/dev/null || break
-                    sleep 1
-                  done
-                fi
-                ;;
-            esac
+            if is_tududi_tunnel_pid "$old_pid"; then
+              kill "$old_pid" 2>/dev/null || true
+              for _ in $(seq 1 10); do
+                kill -0 "$old_pid" 2>/dev/null || break
+                sleep 1
+              done
+            elif [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+              echo "Tududi Quick Tunnel: stale PID file points to another process; not killing PID $old_pid" >&2
+            fi
           fi
 
+          # Also replace a manually-started Quick Tunnel targeting this exact
+          # local Tududi origin. Named tunnels do not use --url and do not match.
           if [ "$(uname -s)" = "Darwin" ]; then
             for old_pid in $(/usr/bin/pgrep -f "cloudflared tunnel.*--url $local_origin" 2>/dev/null || true); do
               [ "$old_pid" = "$$" ] && continue
-              kill "$old_pid" 2>/dev/null || true
+              if is_tududi_tunnel_pid "$old_pid"; then
+                kill "$old_pid" 2>/dev/null || true
+              fi
             done
             sleep 1
           fi
@@ -116,7 +131,7 @@
             status=$?
             trap - EXIT
             if [ "$cleanup_on_error" -eq 1 ]; then
-              if kill -0 "$tunnel_pid" 2>/dev/null; then
+              if is_tududi_tunnel_pid "$tunnel_pid"; then
                 kill "$tunnel_pid" 2>/dev/null || true
               fi
               rm -f "$url_file" "$pid_file"
@@ -233,9 +248,15 @@
             trap 'rm -f "$header_file"' EXIT
             chmod 600 "$header_file"
             printf 'Authorization: Bearer %s\n' "$(cat "$token_file")" >"$header_file"
-            curl --fail --silent --show-error --max-time 10 \
+            status_json="$(curl --fail --silent --show-error --max-time 10 \
               -H "@$header_file" \
-              "$quick_url/api/mcp/status" | jq .
+              "$quick_url/api/mcp/status")"
+            printf '%s\n' "$status_json" | jq -e '.enabled == true' >/dev/null || {
+              echo "Tududi Quick Tunnel: authenticated MCP status is not enabled" >&2
+              printf '%s\n' "$status_json" | jq . >&2 || true
+              exit 1
+            }
+            printf '%s\n' "$status_json" | jq .
             rm -f "$header_file"
             trap - EXIT
           else
@@ -267,17 +288,33 @@
         runtimeInputs = with pkgs; [ coreutils ];
         text = ''
           set -euo pipefail
+          local_origin=${escapeShellArg localOrigin}
           pid_file=${escapeShellArg pidFile}
           url_file=${escapeShellArg urlFile}
+
+          is_tududi_tunnel_pid() {
+            candidate="$1"
+            case "$candidate" in
+              ""|*[!0-9]*) return 1 ;;
+            esac
+            cmd="$(/bin/ps -p "$candidate" -o command= 2>/dev/null || true)"
+            case "$cmd" in
+              *cloudflared*tunnel*"--url $local_origin"*) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
           [ -f "$pid_file" ] || {
             rm -f "$url_file"
             exit 0
           }
+
           pid="$(cat "$pid_file" 2>/dev/null || true)"
-          case "$pid" in
-            ""|*[!0-9]*) ;;
-            *) kill "$pid" 2>/dev/null || true ;;
-          esac
+          if is_tududi_tunnel_pid "$pid"; then
+            kill "$pid" 2>/dev/null || true
+          elif [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+            echo "Tududi Quick Tunnel: stale PID file points to another process; not killing PID $pid" >&2
+          fi
           rm -f "$pid_file" "$url_file"
         '';
       };
@@ -328,6 +365,10 @@
           {
             assertion = tududiCfg.enable;
             message = "services.tududi-mcp-quick requires services.tududi.enable = true.";
+          }
+          {
+            assertion = tududiCfg.mcp.enable;
+            message = "services.tududi-mcp-quick requires services.tududi.mcp.enable = true so /api/mcp is enabled.";
           }
           {
             assertion = hasPrefix "/" cfg.stateDirectory && isOutsideNixStore cfg.stateDirectory;
