@@ -52,6 +52,11 @@
       flake = false;
     };
 
+    # Tududi's feature/nixos-module branch, pinned to the researched package
+    # revision. Keep its own nixpkgs input initially instead of following our
+    # unstable nixpkgs; validate the native Darwin package before deduplicating.
+    tududi.url = "github:dlip/tududi/2fa53e92223773c5a5a288e9c0252bc2ea952064";
+
     # ProxyPilot fork with native t3.chat support.
     # Recommended for this private repo: SSH URL so Nix can authenticate via your GitHub SSH key.
     pp-t3 = {
