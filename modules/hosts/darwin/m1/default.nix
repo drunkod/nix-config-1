@@ -37,6 +37,8 @@ let
     config.flake.modules.homeManager.archctx
     config.flake.modules.homeManager.repo-harness-mcp
     config.flake.modules.homeManager.repo-harness-mcp-quick
+    config.flake.modules.homeManager.tududi
+    config.flake.modules.homeManager.tududi-mcp-quick
     # Keep the named-tunnel module available as an opt-in stable-domain path.
     config.flake.modules.homeManager.cloudflared-mcp-tunnel
     config.flake.modules.homeManager.codex
@@ -164,6 +166,40 @@ in
             publicReadySeconds = 120;
             retryIntervalSeconds = 5;
             probeCount = 5;
+          };
+
+          # Tududi is a separate local application/MCP service. Its HTTP app is
+          # loopback-only; the preferred agent connection is the registered
+          # stdio MCP wrapper. Quick Tunnel is available explicitly for remote
+          # MCP access and never reuses Repo Harness bootstrap/OAuth state.
+          tududi = {
+            enable = true;
+            host = "127.0.0.1";
+            port = 3002;
+            adminEmail = "admin@tududi.invalid";
+            autoStart = true;
+            mcp.enable = true;
+
+            # Bootstrap safely before adding secret material to the repository:
+            # a persistent local session secret is generated under ~/.local/share.
+            # After creating a Tududi tt_ API token, add all three Tududi keys to
+            # secrets/default.yaml with sops and flip this to true.
+            sops = {
+              enable = false;
+              sopsFile = ../../../../secrets/default.yaml;
+            };
+          };
+
+          # Default remote variant for Tududi MCP: an explicit, ephemeral
+          # trycloudflare.com Quick Tunnel. It is not started at login; use
+          # td-mcp-quick-restart when a public endpoint is actually needed.
+          tududi-mcp-quick = {
+            enable = true;
+            waitSeconds = 45;
+            publishGraceSeconds = 20;
+            publicReadySeconds = 120;
+            retryIntervalSeconds = 5;
+            probeCount = 3;
           };
 
           # Optional stable-domain path. The module remains imported so it can
