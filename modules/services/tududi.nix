@@ -1,0 +1,481 @@
+{ inputs, ... }:
+
+{
+  flake.modules.homeManager.tududi =
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
+    let
+      inherit (lib)
+        escapeShellArg
+        hasPrefix
+        mkEnableOption
+        mkIf
+        mkMerge
+        mkOption
+        types
+        ;
+
+      cfg = config.services.tududi;
+      isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+      defaultStateDirectory = "${config.home.homeDirectory}/.local/share/tududi";
+      defaultLogDirectory = "${config.home.homeDirectory}/.local/state/tududi";
+      urlHost = if cfg.host == "::1" then "[::1]" else cfg.host;
+      localOrigin = "http://${urlHost}:${toString cfg.port}";
+      effectiveAllowedOrigins =
+        if cfg.allowedOrigins == [ ] then
+          [
+            "http://localhost:${toString cfg.port}"
+            "http://127.0.0.1:${toString cfg.port}"
+          ]
+        else
+          cfg.allowedOrigins;
+      effectiveFrontendUrl = if cfg.frontendUrl == null then localOrigin else cfg.frontendUrl;
+      effectiveBackendUrl = if cfg.backendUrl == null then localOrigin else cfg.backendUrl;
+
+      upstreamPackage = inputs.tududi.packages.${pkgs.system}.default;
+      darwinPackage = upstreamPackage.overrideAttrs (old: {
+        # Upstream marks the package Linux-only and explicitly pulls GNU GCC.
+        # Native Node addons on Darwin build against stdenv.cc (clang) instead.
+        nativeBuildInputs = [
+          pkgs.python3
+          pkgs.gnumake
+          pkgs.sqlite
+          pkgs.pkg-config
+          pkgs.stdenv.cc
+        ];
+        meta = (old.meta or { }) // {
+          platforms = lib.platforms.darwin;
+        };
+      });
+
+      appDir = "${cfg.package}/libexec/tududi/backend";
+      nodeBin = "${cfg.nodePackage}/bin/node";
+      sequelizeCli = "${cfg.package}/libexec/tududi/node_modules/.bin/sequelize-cli";
+      serviceLabel = "org.nix-community.home.tududi";
+      isOutsideNixStore = path: path != "/nix/store" && !hasPrefix "/nix/store/" path;
+
+      sessionSecretFile =
+        if cfg.sops.enable then config.sops.secrets."tududi-session-secret".path else cfg.sessionSecretFile;
+      adminPasswordFile =
+        if cfg.sops.enable then config.sops.secrets."tududi-admin-password".path else cfg.adminPasswordFile;
+      apiTokenFile =
+        if cfg.sops.enable then config.sops.secrets."tududi-api-token".path else cfg.apiTokenFile;
+      bootstrapAdminPasswordFile = "${cfg.stateDirectory}/bootstrap-admin-password";
+      bootstrapAdminMarker = "${cfg.stateDirectory}/bootstrap-admin-provisioned";
+
+      server = pkgs.writeShellApplication {
+        name = "tududi-server";
+        runtimeInputs = with pkgs; [
+          coreutils
+          openssl
+        ];
+        text = ''
+          set -euo pipefail
+          umask 077
+
+          state_dir=${escapeShellArg cfg.stateDirectory}
+          db_file=${escapeShellArg cfg.dbFile}
+          upload_dir=${escapeShellArg cfg.uploadDirectory}
+          log_dir=${escapeShellArg cfg.logDirectory}
+          session_secret_file=${escapeShellArg (if sessionSecretFile == null then "" else sessionSecretFile)}
+          admin_password_file=${escapeShellArg (if adminPasswordFile == null then "" else adminPasswordFile)}
+          bootstrap_admin_password_file=${escapeShellArg bootstrapAdminPasswordFile}
+          bootstrap_admin_marker=${escapeShellArg bootstrapAdminMarker}
+          provision_bootstrap_admin=0
+
+          mkdir -p "$state_dir" "$(dirname "$db_file")" "$upload_dir" "$log_dir"
+          chmod 700 "$state_dir" "$(dirname "$db_file")" "$upload_dir" "$log_dir"
+
+          if [ -n "$session_secret_file" ]; then
+            [ -s "$session_secret_file" ] || {
+              echo "Tududi: configured session secret file is missing or empty: $session_secret_file" >&2
+              exit 1
+            }
+          else
+            session_secret_file="$state_dir/session-secret"
+            if [ ! -s "$session_secret_file" ]; then
+              openssl rand -hex 64 >"$session_secret_file"
+              chmod 600 "$session_secret_file"
+            fi
+          fi
+
+          export NODE_ENV=production
+          export PORT=${escapeShellArg (toString cfg.port)}
+          export HOST=${escapeShellArg cfg.host}
+          export DB_FILE="$db_file"
+          export TUDUDI_ALLOWED_ORIGINS=${escapeShellArg (lib.concatStringsSep "," effectiveAllowedOrigins)}
+          export TUDUDI_UPLOAD_PATH="$upload_dir"
+          export TUDUDI_TRUST_PROXY=${escapeShellArg (if cfg.trustProxy then "true" else "false")}
+          export TUDUDI_SESSION_SECRET="$(cat "$session_secret_file")"
+          export TUDUDI_USER_EMAIL=${escapeShellArg cfg.adminEmail}
+          export FRONTEND_URL=${escapeShellArg effectiveFrontendUrl}
+          export BACKEND_URL=${escapeShellArg effectiveBackendUrl}
+          export SWAGGER_ENABLED=false
+          export DISABLE_SCHEDULER=false
+          export DISABLE_TELEGRAM=true
+          export FF_ENABLE_BACKUPS=false
+          export FF_ENABLE_CALDAV=false
+          export FF_ENABLE_CALENDAR=false
+          export FF_ENABLE_HABITS=false
+          export FF_ENABLE_MCP=${escapeShellArg (if cfg.mcp.enable then "true" else "false")}
+          export ENABLE_EMAIL=false
+          export OIDC_ENABLED=false
+          export PASSWORD_AUTH_ENABLED=true
+          export COOKIE_SECURE=auto
+          export DISABLE_HSTS=false
+          export RATE_LIMITING_ENABLED=true
+          export NODE_PATH=${escapeShellArg "${cfg.package}/libexec/tududi/node_modules"}
+
+          if [ -n "$admin_password_file" ]; then
+            [ -s "$admin_password_file" ] || {
+              echo "Tududi: configured admin password file is missing or empty: $admin_password_file" >&2
+              exit 1
+            }
+            export TUDUDI_USER_PASSWORD="$(cat "$admin_password_file")"
+          elif [ -n ${escapeShellArg cfg.adminEmail} ] && [ ! -f "$bootstrap_admin_marker" ]; then
+            if [ ! -s "$bootstrap_admin_password_file" ]; then
+              openssl rand -base64 24 >"$bootstrap_admin_password_file"
+              chmod 600 "$bootstrap_admin_password_file"
+            fi
+            export TUDUDI_USER_PASSWORD="$(cat "$bootstrap_admin_password_file")"
+            provision_bootstrap_admin=1
+          fi
+
+          cd ${escapeShellArg appDir}
+
+          if [ ! -f "$DB_FILE" ]; then
+            echo "Tududi: creating database at $DB_FILE"
+            ${nodeBin} scripts/db-init.js
+          fi
+
+          echo "Tududi: running database migrations"
+          ${nodeBin} ${sequelizeCli} db:migrate --config config/database.js
+          ${nodeBin} scripts/db-status.js
+
+          if [ -n "''${TUDUDI_USER_EMAIL:-}" ] && [ -n "''${TUDUDI_USER_PASSWORD:-}" ]; then
+            if [ "$provision_bootstrap_admin" -eq 1 ]; then
+              ${nodeBin} scripts/user-create.js "$TUDUDI_USER_EMAIL" "$TUDUDI_USER_PASSWORD" true
+              touch "$bootstrap_admin_marker"
+              chmod 600 "$bootstrap_admin_marker"
+            else
+              # With an explicit secret file, the configured admin password is
+              # declarative and is reconciled on each service start.
+              ${nodeBin} scripts/user-create.js "$TUDUDI_USER_EMAIL" "$TUDUDI_USER_PASSWORD" true
+            fi
+          fi
+
+          exec ${nodeBin} app.js
+        '';
+      };
+
+      mcpStdio = pkgs.writeShellApplication {
+        name = "tududi-mcp-stdio";
+        runtimeInputs = with pkgs; [ coreutils ];
+        text = ''
+          set -euo pipefail
+
+          token_file=${escapeShellArg (if apiTokenFile == null then "" else apiTokenFile)}
+          if [ -z "$token_file" ] || [ ! -s "$token_file" ]; then
+            echo "Tududi MCP: API token is not configured." >&2
+            echo "Create a Tududi API token in Profile -> API Keys, store it in SOPS, then enable services.tududi.sops." >&2
+            exit 1
+          fi
+
+          export NODE_ENV=production
+          export DB_FILE=${escapeShellArg cfg.dbFile}
+          export TUDUDI_UPLOAD_PATH=${escapeShellArg cfg.uploadDirectory}
+          export TUDUDI_API_TOKEN="$(cat "$token_file")"
+          export MCP_SERVER_NAME=${escapeShellArg cfg.mcp.serverName}
+          export FF_ENABLE_MCP=true
+          export NODE_PATH=${escapeShellArg "${cfg.package}/libexec/tududi/node_modules"}
+
+          cd ${escapeShellArg appDir}
+          exec ${nodeBin} modules/mcp/server.js
+        '';
+      };
+
+      bootstrapCredentials = pkgs.writeShellApplication {
+        name = "tududi-bootstrap-credentials";
+        runtimeInputs = with pkgs; [ coreutils ];
+        text = ''
+          set -euo pipefail
+          password_file=${escapeShellArg bootstrapAdminPasswordFile}
+          printf 'Email: %s\n' ${escapeShellArg cfg.adminEmail}
+          if [ -s "$password_file" ]; then
+            printf 'Password: '
+            cat "$password_file"
+            printf '\n'
+            echo "Password file: $password_file (mode 0600)"
+          elif [ -n ${escapeShellArg (if adminPasswordFile == null then "" else adminPasswordFile)} ]; then
+            echo "Password is managed by the configured secret file and is not printed."
+          else
+            echo "Bootstrap password has not been generated yet; start/restart Tududi first."
+          fi
+        '';
+      };
+
+      health = pkgs.writeShellApplication {
+        name = "tududi-health";
+        runtimeInputs = with pkgs; [ curl ];
+        text = ''
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 5 ${escapeShellArg "${localOrigin}/api/health"}
+          printf '\n'
+        '';
+      };
+
+      restart = pkgs.writeShellApplication {
+        name = "tududi-restart";
+        runtimeInputs = with pkgs; [ coreutils ];
+        text = ''
+          set -euo pipefail
+          if [ "$(uname -s)" != "Darwin" ]; then
+            echo "tududi-restart: this Home Manager service is Darwin-only" >&2
+            exit 1
+          fi
+          exec /bin/launchctl kickstart -k "gui/$UID/${serviceLabel}"
+        '';
+      };
+    in
+    {
+      options.services.tududi = {
+        enable = mkEnableOption "Tududi task management service for Home Manager on macOS";
+
+        package = mkOption {
+          type = types.package;
+          default = darwinPackage;
+          description = "Tududi package. The default adapts the upstream feature/nixos-module package for Darwin.";
+        };
+
+        nodePackage = mkOption {
+          type = types.package;
+          default = pkgs.nodejs_22;
+          description = "Node.js runtime used by Tududi and its MCP stdio server.";
+        };
+
+        host = mkOption {
+          type = types.enum [
+            "127.0.0.1"
+            "localhost"
+            "::1"
+          ];
+          default = "127.0.0.1";
+          description = "Loopback address for the local Tududi HTTP service.";
+        };
+
+        port = mkOption {
+          type = types.port;
+          default = 3002;
+          description = "Local Tududi HTTP port.";
+        };
+
+        stateDirectory = mkOption {
+          type = types.str;
+          default = defaultStateDirectory;
+          description = "Persistent Tududi state directory outside the Nix store.";
+        };
+
+        dbFile = mkOption {
+          type = types.str;
+          default = "${defaultStateDirectory}/db/production.sqlite3";
+          description = "Persistent Tududi SQLite database path.";
+        };
+
+        uploadDirectory = mkOption {
+          type = types.str;
+          default = "${defaultStateDirectory}/uploads";
+          description = "Persistent Tududi uploads directory.";
+        };
+
+        logDirectory = mkOption {
+          type = types.str;
+          default = defaultLogDirectory;
+          description = "Tududi launchd log directory outside the Nix store.";
+        };
+
+        allowedOrigins = mkOption {
+          type = types.listOf types.str;
+          default = [ ];
+          description = "CORS origins. Empty means localhost and 127.0.0.1 on the configured port.";
+        };
+
+        trustProxy = mkOption {
+          type = types.bool;
+          default = true;
+          description = "Trust proxy headers. Enabled because the optional Quick Tunnel terminates HTTPS upstream.";
+        };
+
+        frontendUrl = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "Frontend URL. Null uses the local loopback origin.";
+        };
+
+        backendUrl = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "Backend URL. Null uses the local loopback origin.";
+        };
+
+        adminEmail = mkOption {
+          type = types.str;
+          default = "admin@tududi.invalid";
+          description = "Admin email used for initial provisioning. The reserved .invalid domain avoids accidental real email delivery.";
+        };
+
+        sessionSecretFile = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "Optional runtime file containing TUDUDI_SESSION_SECRET. When null, a persistent local secret is generated in stateDirectory.";
+        };
+
+        adminPasswordFile = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "Optional runtime file containing the initial admin password.";
+        };
+
+        apiTokenFile = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "Optional runtime file containing the tt_ Tududi API token used by stdio MCP.";
+        };
+
+        autoStart = mkOption {
+          type = types.bool;
+          default = true;
+          description = "Start Tududi at login through a Home Manager launchd agent.";
+        };
+
+        mcp = {
+          enable = mkEnableOption "Tududi MCP stdio registration" // { default = true; };
+          serverName = mkOption {
+            type = types.strMatching "[A-Za-z0-9][A-Za-z0-9._-]*";
+            default = "tududi";
+            description = "MCP server name exposed by Tududi's stdio server.";
+          };
+        };
+
+        sops = {
+          enable = mkEnableOption "SOPS-backed Tududi session, admin, and MCP API secrets";
+          sopsFile = mkOption {
+            type = types.nullOr types.path;
+            default = null;
+            description = "Encrypted SOPS YAML containing tududi/session-secret, tududi/admin-password, and tududi/api-token.";
+          };
+          sessionSecretKey = mkOption {
+            type = types.str;
+            default = "tududi/session-secret";
+          };
+          adminPasswordKey = mkOption {
+            type = types.str;
+            default = "tududi/admin-password";
+          };
+          apiTokenKey = mkOption {
+            type = types.str;
+            default = "tududi/api-token";
+          };
+        };
+      };
+
+      config = mkIf cfg.enable (mkMerge [
+        {
+          assertions = [
+            {
+              assertion = isDarwin;
+              message = "services.tududi is the Home Manager/nix-darwin adapter and currently supports Darwin only.";
+            }
+            {
+              assertion = hasPrefix "/" cfg.stateDirectory && hasPrefix "/" cfg.dbFile && hasPrefix "/" cfg.uploadDirectory;
+              message = "Tududi stateDirectory, dbFile, and uploadDirectory must be absolute paths.";
+            }
+            {
+              assertion = hasPrefix "/" cfg.logDirectory && isOutsideNixStore cfg.logDirectory;
+              message = "Tududi logs must use an absolute path outside the Nix store.";
+            }
+            {
+              assertion = isOutsideNixStore cfg.stateDirectory && isOutsideNixStore cfg.dbFile && isOutsideNixStore cfg.uploadDirectory;
+              message = "Tududi persistent state must remain outside the Nix store.";
+            }
+            {
+              assertion = !cfg.sops.enable || cfg.sops.sopsFile != null;
+              message = "services.tududi.sops.sopsFile is required when SOPS integration is enabled.";
+            }
+          ];
+
+          home.packages = [
+            cfg.package
+            bootstrapCredentials
+            health
+            mcpStdio
+            restart
+            server
+          ];
+
+          home.activation.tududiRuntimeDirectories = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+            run mkdir -p ${escapeShellArg cfg.stateDirectory}
+            run mkdir -p ${escapeShellArg (builtins.dirOf cfg.dbFile)}
+            run mkdir -p ${escapeShellArg cfg.uploadDirectory}
+            run mkdir -p ${escapeShellArg cfg.logDirectory}
+            run chmod 700 ${escapeShellArg cfg.stateDirectory}
+            run chmod 700 ${escapeShellArg (builtins.dirOf cfg.dbFile)}
+            run chmod 700 ${escapeShellArg cfg.uploadDirectory}
+            run chmod 700 ${escapeShellArg cfg.logDirectory}
+          '';
+
+          launchd.agents.tududi = {
+            enable = true;
+            domain = "gui";
+            config = {
+              Label = serviceLabel;
+              ProgramArguments = [ "${server}/bin/tududi-server" ];
+              WorkingDirectory = appDir;
+              RunAtLoad = cfg.autoStart;
+              KeepAlive = {
+                SuccessfulExit = false;
+              };
+              ThrottleInterval = 10;
+              ProcessType = "Background";
+              StandardOutPath = "${cfg.logDirectory}/stdout.log";
+              StandardErrorPath = "${cfg.logDirectory}/stderr.log";
+            };
+          };
+
+          programs.mcp.servers = mkIf cfg.mcp.enable {
+            tududi = {
+              command = lib.getExe mcpStdio;
+            };
+          };
+
+          home.shellAliases = {
+            td-bootstrap-credentials = "tududi-bootstrap-credentials";
+            td-health = "tududi-health";
+            td-restart = "tududi-restart";
+            td-mcp-stdio = "tududi-mcp-stdio";
+          };
+        }
+
+        (mkIf cfg.sops.enable {
+          sops.secrets."tududi-session-secret" = {
+            sopsFile = cfg.sops.sopsFile;
+            key = cfg.sops.sessionSecretKey;
+            mode = "0400";
+          };
+          sops.secrets."tududi-admin-password" = {
+            sopsFile = cfg.sops.sopsFile;
+            key = cfg.sops.adminPasswordKey;
+            mode = "0400";
+          };
+          sops.secrets."tududi-api-token" = {
+            sopsFile = cfg.sops.sopsFile;
+            key = cfg.sops.apiTokenKey;
+            mode = "0400";
+          };
+        })
+      ]);
+    };
+}
