@@ -75,7 +75,7 @@
             echo "Tududi Quick Tunnel: local Tududi is not healthy; restarting it first"
             "$restart"
             local_ready=0
-            for _ in $(seq 1 20); do
+            for ((attempt = 0; attempt < 20; attempt++)); do
               if curl --fail --silent --max-time 2 "$local_origin/api/health" >/dev/null 2>&1; then
                 local_ready=1
                 break
@@ -91,10 +91,10 @@
           # Stop the helper-owned tunnel from the previous run, but never trust
           # a stale PID file enough to kill an unrelated process after PID reuse.
           if [ -f "$pid_file" ]; then
-            old_pid="$(cat "$pid_file" 2>/dev/null || true)"
+            old_pid="$(<"$pid_file")"
             if is_tududi_tunnel_pid "$old_pid"; then
               kill "$old_pid" 2>/dev/null || true
-              for _ in $(seq 1 10); do
+              for ((attempt = 0; attempt < 10; attempt++)); do
                 kill -0 "$old_pid" 2>/dev/null || break
                 sleep 1
               done
@@ -105,15 +105,14 @@
 
           # Also replace a manually-started Quick Tunnel targeting this exact
           # local Tududi origin. Named tunnels do not use --url and do not match.
-          if [ "$(uname -s)" = "Darwin" ]; then
-            for old_pid in $(/usr/bin/pgrep -f "cloudflared tunnel.*--url $local_origin" 2>/dev/null || true); do
-              [ "$old_pid" = "$$" ] && continue
-              if is_tududi_tunnel_pid "$old_pid"; then
-                kill "$old_pid" 2>/dev/null || true
-              fi
-            done
-            sleep 1
-          fi
+          while IFS= read -r old_pid; do
+            [ -n "$old_pid" ] || continue
+            [ "$old_pid" = "$$" ] && continue
+            if is_tududi_tunnel_pid "$old_pid"; then
+              kill "$old_pid" 2>/dev/null || true
+            fi
+          done < <(/usr/bin/pgrep -f 'cloudflared tunnel' 2>/dev/null || true)
+          sleep 1
 
           rm -f "$log_file" "$url_file" "$pid_file"
 
@@ -152,7 +151,7 @@
               exit 1
             fi
             if [ -z "$quick_url" ]; then
-              quick_url="$(grep -Eo 'https://[A-Za-z0-9-]+\.trycloudflare\.com' "$log_file" | head -1 || true)"
+              quick_url="$(grep -Eom1 'https://[A-Za-z0-9-]+\.trycloudflare\.com' "$log_file" || true)"
             fi
             if [ "$registered" -eq 0 ] && grep -q 'Registered tunnel connection.*protocol=http2' "$log_file"; then
               registered=1
@@ -237,7 +236,7 @@
             echo "Tududi Quick Tunnel: no saved URL; run td-mcp-quick-restart first" >&2
             exit 1
           }
-          quick_url="$(cat "$url_file")"
+          quick_url="$(<"$url_file")"
 
           echo "=== public health ==="
           curl --fail --silent --show-error --max-time 10 "$quick_url/api/health" | jq .
@@ -247,7 +246,9 @@
             header_file="$(mktemp)"
             trap 'rm -f "$header_file"' EXIT
             chmod 600 "$header_file"
-            printf 'Authorization: Bearer %s\n' "$(cat "$token_file")" >"$header_file"
+            token="$(<"$token_file")"
+            printf 'Authorization: Bearer %s\n' "$token" >"$header_file"
+            unset token
             status_json="$(curl --fail --silent --show-error --max-time 10 \
               -H "@$header_file" \
               "$quick_url/api/mcp/status")"
@@ -279,7 +280,8 @@
             echo "Tududi Quick Tunnel: no saved URL; run td-mcp-quick-restart first" >&2
             exit 1
           }
-          printf '%s/api/mcp\n' "$(cat "$url_file")"
+          quick_url="$(<"$url_file")"
+          printf '%s/api/mcp\n' "$quick_url"
         '';
       };
 
@@ -309,7 +311,7 @@
             exit 0
           }
 
-          pid="$(cat "$pid_file" 2>/dev/null || true)"
+          pid="$(<"$pid_file")"
           if is_tududi_tunnel_pid "$pid"; then
             kill "$pid" 2>/dev/null || true
           elif [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
