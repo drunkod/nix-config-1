@@ -18,13 +18,15 @@ Repo Harness remains on `127.0.0.1:8765` and continues to use its own Quick Tunn
 
 The upstream Tududi package comes from the researched `feature/nixos-module` revision `2fa53e92223773c5a5a288e9c0252bc2ea952064`. The repository intentionally does not make Tududi's nixpkgs input follow this flake's `nixos-unstable` input yet.
 
-Because this change adds a new flake input, refresh the lock file once on a machine with Nix/network access:
+Because this change adds a new flake input, refresh the lock file once on a machine with Nix/network access. Current Nix uses:
 
 ```bash
-nix flake lock --update-input tududi
+nix flake update tududi
 ```
 
-Then validate the native package before switching the host:
+Commit the resulting `flake.lock` change with the integration once it has been generated on the M1.
+
+You can validate the upstream native package independently before switching the host:
 
 ```bash
 NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1 \
@@ -33,7 +35,7 @@ NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1 \
   --show-trace
 ```
 
-The local adapter removes upstream's Linux-only platform metadata and uses Darwin's `stdenv.cc` instead of GNU GCC for native Node addons. A successful build on the M1 is still the required validation gate.
+The upstream package is marked Linux-only even though it builds successfully on Apple Silicon. The local adapter therefore changes only `meta.platforms` to permit Darwin evaluation and deliberately preserves the complete upstream `buildNpmPackage` build inputs/hooks. Replacing `nativeBuildInputs` would remove the npm setup hook and cause `npm: command not found` during `installPhase`.
 
 Activate the profile:
 
@@ -80,7 +82,7 @@ After all three encrypted keys exist, change the `m1-min` block to:
 services.tududi.sops.enable = true;
 ```
 
-and rebuild. The module then reads all secret values from SOPS runtime files; the values are never interpolated into Nix derivations or MCP `env` attributes.
+and rebuild. The module then reads all secret values from SOPS runtime files; the values are never interpolated into Nix derivations or MCP `env` attributes. The obsolete bootstrap password and locally generated session-secret files are removed after the corresponding explicit secret sources become active.
 
 The stdio MCP registration is already present. Verify it directly with:
 
@@ -92,7 +94,7 @@ If the API token is not configured yet, the wrapper fails closed with instructio
 
 ## Quick Tunnel remote MCP
 
-Quick Tunnel is available but deliberately not auto-started, because every replacement gets a new random hostname.
+Quick Tunnel is available but deliberately not auto-started, because every replacement gets a new random hostname. It requires `services.tududi.mcp.enable = true`, because that option also enables Tududi's HTTP `/api/mcp` feature flag.
 
 Start or replace it:
 
@@ -112,11 +114,15 @@ Test local health, public health, and—when the SOPS API token is available—a
 td-mcp-quick-test
 ```
 
+The authenticated status test requires Tududi to report `{ "enabled": true }`; an authenticated but disabled MCP endpoint is treated as a failure.
+
 Stop it:
 
 ```bash
 td-mcp-quick-stop
 ```
+
+The Quick Tunnel helpers verify that a saved PID still belongs to a `cloudflared tunnel --url <local Tududi origin>` process before sending a signal, so a stale PID file cannot kill an unrelated process after PID reuse.
 
 Remote clients use the printed URL and the Tududi API token:
 
