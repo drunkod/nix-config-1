@@ -36,15 +36,10 @@
 
       upstreamPackage = inputs.tududi.packages.${pkgs.system}.default;
       darwinPackage = upstreamPackage.overrideAttrs (old: {
-        # Upstream marks the package Linux-only and explicitly pulls GNU GCC.
-        # Native Node addons on Darwin build against stdenv.cc (clang) instead.
-        nativeBuildInputs = [
-          pkgs.python3
-          pkgs.gnumake
-          pkgs.sqlite
-          pkgs.pkg-config
-          pkgs.stdenv.cc
-        ];
+        # The upstream derivation builds successfully on aarch64-darwin when
+        # unsupported-system checks are bypassed. Only relax its incorrect
+        # Linux-only metadata here. In particular, do not replace
+        # nativeBuildInputs: buildNpmPackage injects npm/node setup hooks there.
         meta = (old.meta or { }) // {
           platforms = lib.platforms.darwin;
         };
@@ -62,6 +57,7 @@
         if cfg.sops.enable then config.sops.secrets."tududi-admin-password".path else cfg.adminPasswordFile;
       apiTokenFile =
         if cfg.sops.enable then config.sops.secrets."tududi-api-token".path else cfg.apiTokenFile;
+      generatedSessionSecretFile = "${cfg.stateDirectory}/session-secret";
       bootstrapAdminPasswordFile = "${cfg.stateDirectory}/bootstrap-admin-password";
       bootstrapAdminMarker = "${cfg.stateDirectory}/bootstrap-admin-provisioned";
 
@@ -80,6 +76,7 @@
           upload_dir=${escapeShellArg cfg.uploadDirectory}
           log_dir=${escapeShellArg cfg.logDirectory}
           session_secret_file=${escapeShellArg (if sessionSecretFile == null then "" else sessionSecretFile)}
+          generated_session_secret_file=${escapeShellArg generatedSessionSecretFile}
           admin_password_file=${escapeShellArg (if adminPasswordFile == null then "" else adminPasswordFile)}
           bootstrap_admin_password_file=${escapeShellArg bootstrapAdminPasswordFile}
           bootstrap_admin_marker=${escapeShellArg bootstrapAdminMarker}
@@ -93,8 +90,11 @@
               echo "Tududi: configured session secret file is missing or empty: $session_secret_file" >&2
               exit 1
             }
+            # Once an explicit secret source is active, remove the obsolete
+            # locally-generated copy so there is only one source of truth.
+            rm -f "$generated_session_secret_file"
           else
-            session_secret_file="$state_dir/session-secret"
+            session_secret_file="$generated_session_secret_file"
             if [ ! -s "$session_secret_file" ]; then
               openssl rand -hex 64 >"$session_secret_file"
               chmod 600 "$session_secret_file"
@@ -107,7 +107,9 @@
           export DB_FILE="$db_file"
           export TUDUDI_ALLOWED_ORIGINS=${escapeShellArg (lib.concatStringsSep "," effectiveAllowedOrigins)}
           export TUDUDI_UPLOAD_PATH="$upload_dir"
-          export TUDUDI_TRUST_PROXY=${escapeShellArg (if cfg.trustProxy then "true" else "false")}
+          # Tududi treats true as the single-hop value 1 but emits a warning;
+          # pass 1 directly for the Cloudflare reverse-proxy case.
+          export TUDUDI_TRUST_PROXY=${escapeShellArg (if cfg.trustProxy then "1" else "false")}
           export TUDUDI_SESSION_SECRET="$(cat "$session_secret_file")"
           export TUDUDI_USER_EMAIL=${escapeShellArg cfg.adminEmail}
           export FRONTEND_URL=${escapeShellArg effectiveFrontendUrl}
@@ -134,6 +136,9 @@
               exit 1
             }
             export TUDUDI_USER_PASSWORD="$(cat "$admin_password_file")"
+            # The bootstrap password becomes invalid once declarative password
+            # management is enabled; do not leave or later display it.
+            rm -f "$bootstrap_admin_password_file"
           elif [ -n ${escapeShellArg cfg.adminEmail} ] && [ ! -f "$bootstrap_admin_marker" ]; then
             if [ ! -s "$bootstrap_admin_password_file" ]; then
               openssl rand -base64 24 >"$bootstrap_admin_password_file"
@@ -202,14 +207,15 @@
         text = ''
           set -euo pipefail
           password_file=${escapeShellArg bootstrapAdminPasswordFile}
+          managed_password_file=${escapeShellArg (if adminPasswordFile == null then "" else adminPasswordFile)}
           printf 'Email: %s\n' ${escapeShellArg cfg.adminEmail}
-          if [ -s "$password_file" ]; then
+          if [ -n "$managed_password_file" ]; then
+            echo "Password is managed by the configured secret file and is not printed."
+          elif [ -s "$password_file" ]; then
             printf 'Password: '
             cat "$password_file"
             printf '\n'
             echo "Password file: $password_file (mode 0600)"
-          elif [ -n ${escapeShellArg (if adminPasswordFile == null then "" else adminPasswordFile)} ]; then
-            echo "Password is managed by the configured secret file and is not printed."
           else
             echo "Bootstrap password has not been generated yet; start/restart Tududi first."
           fi
@@ -242,7 +248,7 @@
         package = mkOption {
           type = types.package;
           default = darwinPackage;
-          description = "Tududi package. The default adapts the upstream feature/nixos-module package for Darwin.";
+          description = "Tududi package. The default preserves the upstream package and only relaxes its Linux-only platform metadata for Darwin.";
         };
 
         nodePackage = mkOption {
@@ -294,18 +300,13 @@
         allowedOrigins = mkOption {
           type = types.listOf types.str;
           default = defaultLoopbackOrigins;
-          defaultText = lib.literalExpression ''
-            [ "http://localhost:\${toString cfg.port}"
-              "http://127.0.0.1:\${toString cfg.port}"
-              "http://[::1]:\${toString cfg.port}" ];
-          '';
           description = "CORS origins. Defaults to localhost, 127.0.0.1, and [::1] on the configured port.";
         };
 
         trustProxy = mkOption {
           type = types.bool;
           default = true;
-          description = "Trust proxy headers. Enabled because the optional Quick Tunnel terminates HTTPS upstream.";
+          description = "Trust the first reverse-proxy hop. Enabled because the optional Quick Tunnel terminates HTTPS upstream.";
         };
 
         frontendUrl = mkOption {
@@ -351,7 +352,7 @@
         };
 
         mcp = {
-          enable = mkEnableOption "Tududi MCP stdio registration" // { default = true; };
+          enable = mkEnableOption "Tududi MCP feature and stdio registration" // { default = true; };
           serverName = mkOption {
             type = types.strMatching "[A-Za-z0-9][A-Za-z0-9._-]*";
             default = "tududi";
@@ -447,6 +448,14 @@
             tududi = {
               command = lib.getExe mcpStdio;
             };
+          };
+
+          # These are intentionally short aliases, not identity aliases.
+          home.shellAliases = {
+            td-bootstrap-credentials = "tududi-bootstrap-credentials";
+            td-health = "tududi-health";
+            td-restart = "tududi-restart";
+            td-mcp-stdio = "tududi-mcp-stdio";
           };
         }
 
