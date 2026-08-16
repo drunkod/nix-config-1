@@ -23,16 +23,14 @@
       isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
       defaultStateDirectory = "${config.home.homeDirectory}/.local/share/tududi";
       defaultLogDirectory = "${config.home.homeDirectory}/.local/state/tududi";
-      urlHost = if cfg.host == "::1" then "[::1]" else cfg.host;
-      localOrigin = "http://${urlHost}:${toString cfg.port}";
-      effectiveAllowedOrigins =
-        if cfg.allowedOrigins == [ ] then
-          [
-            "http://localhost:${toString cfg.port}"
-            "http://127.0.0.1:${toString cfg.port}"
-          ]
-        else
-          cfg.allowedOrigins;
+      bracketHost = host: if host == "::1" then "[::1]" else host;
+      localOrigin = "http://${bracketHost cfg.host}:${toString cfg.port}";
+      defaultLoopbackOrigins = [
+        "http://localhost:${toString cfg.port}"
+        "http://127.0.0.1:${toString cfg.port}"
+        "http://[::1]:${toString cfg.port}"
+      ];
+      effectiveAllowedOrigins = cfg.allowedOrigins;
       effectiveFrontendUrl = if cfg.frontendUrl == null then localOrigin else cfg.frontendUrl;
       effectiveBackendUrl = if cfg.backendUrl == null then localOrigin else cfg.backendUrl;
 
@@ -233,10 +231,6 @@
         runtimeInputs = with pkgs; [ coreutils ];
         text = ''
           set -euo pipefail
-          if [ "$(uname -s)" != "Darwin" ]; then
-            echo "tududi-restart: this Home Manager service is Darwin-only" >&2
-            exit 1
-          fi
           exec /bin/launchctl kickstart -k "gui/$UID/${serviceLabel}"
         '';
       };
@@ -299,8 +293,13 @@
 
         allowedOrigins = mkOption {
           type = types.listOf types.str;
-          default = [ ];
-          description = "CORS origins. Empty means localhost and 127.0.0.1 on the configured port.";
+          default = defaultLoopbackOrigins;
+          defaultText = lib.literalExpression ''
+            [ "http://localhost:\${toString cfg.port}"
+              "http://127.0.0.1:\${toString cfg.port}"
+              "http://[::1]:\${toString cfg.port}" ];
+          '';
+          description = "CORS origins. Defaults to localhost, 127.0.0.1, and [::1] on the configured port.";
         };
 
         trustProxy = mkOption {
@@ -411,10 +410,9 @@
             cfg.package
             bootstrapCredentials
             health
-            mcpStdio
             restart
             server
-          ];
+          ] ++ lib.optional cfg.mcp.enable mcpStdio;
 
           home.activation.tududiRuntimeDirectories = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
             run mkdir -p ${escapeShellArg cfg.stateDirectory}
@@ -449,13 +447,6 @@
             tududi = {
               command = lib.getExe mcpStdio;
             };
-          };
-
-          home.shellAliases = {
-            td-bootstrap-credentials = "tududi-bootstrap-credentials";
-            td-health = "tududi-health";
-            td-restart = "tududi-restart";
-            td-mcp-stdio = "tududi-mcp-stdio";
           };
         }
 

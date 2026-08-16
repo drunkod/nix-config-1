@@ -18,8 +18,8 @@
 
       cfg = config.services.tududi-mcp-quick;
       tududiCfg = config.services.tududi;
-      localUrlHost = if tududiCfg.host == "::1" then "[::1]" else tududiCfg.host;
-      localOrigin = "http://${localUrlHost}:${toString tududiCfg.port}";
+      bracketHost = host: if host == "::1" then "[::1]" else host;
+      localOrigin = "http://${bracketHost tududiCfg.host}:${toString tududiCfg.port}";
       stateDirectory = cfg.stateDirectory;
       logFile = "${stateDirectory}/cloudflared.log";
       urlFile = "${stateDirectory}/public-url";
@@ -139,7 +139,7 @@
             if [ -z "$quick_url" ]; then
               quick_url="$(grep -Eo 'https://[A-Za-z0-9-]+\.trycloudflare\.com' "$log_file" | head -1 || true)"
             fi
-            if grep -q 'Registered tunnel connection.*protocol=http2' "$log_file"; then
+            if [ "$registered" -eq 0 ] && grep -q 'Registered tunnel connection.*protocol=http2' "$log_file"; then
               registered=1
             fi
             if [ -n "$quick_url" ] && [ "$registered" -eq 1 ]; then
