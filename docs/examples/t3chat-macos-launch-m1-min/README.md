@@ -1,8 +1,9 @@
-# Full example files for `t3chat-macos-launch` on `m1-min`
+# t3.chat `m1-min` example snapshot
 
-These files are complete examples for integrating the private `pp-t3` / ProxyPilot t3.chat launcher into the `m1-min` profile.
-
-They are intentionally stored under `docs/examples/` so you can review them before copying them into the real configuration.
+This directory is a version-sensitive reference snapshot for the
+[current narrative guide](../../macos/t3chat-launch.md). The `.nix` files are not
+the canonical configuration and are intentionally unchanged by documentation
+maintenance.
 
 ## Files
 
@@ -34,15 +35,12 @@ pp-t3 = {
 };
 ```
 
-## Apply the example
+## Use the snapshot
 
-From the repo root:
+Compare individual sections with the current repository and port only reviewed
+changes. Do not overwrite the current flake or host modules wholesale.
 
 ```bash
-cp docs/examples/t3chat-macos-launch-m1-min/flake.nix flake.nix
-cp docs/examples/t3chat-macos-launch-m1-min/modules-hosts-darwin-m1-default.nix modules/hosts/darwin/m1/default.nix
-cp docs/examples/t3chat-macos-launch-m1-min/proxypilot-t3chat.nix modules/programs/proxypilot-t3chat.nix
-
 nix flake lock --update-input pp-t3
 nix flake check --show-trace
 darwin-rebuild switch --flake .#m1-min

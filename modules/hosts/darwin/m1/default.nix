@@ -23,6 +23,7 @@ let
     inputs.sops-nix.homeManagerModules.sops
     sops
     config.flake.modules.homeManager."claude-code"
+    config.flake.modules.homeManager.codegraph
     config.flake.modules.homeManager.zed
     mcp
     zsh
@@ -33,6 +34,11 @@ let
 
   aiFullImports = aiCoreImports ++ [
     config.flake.modules.homeManager.repo-harness
+    config.flake.modules.homeManager.archctx
+    config.flake.modules.homeManager.repo-harness-mcp
+    config.flake.modules.homeManager.repo-harness-mcp-quick
+    # Keep the named-tunnel module available as an opt-in stable-domain path.
+    config.flake.modules.homeManager.cloudflared-mcp-tunnel
     config.flake.modules.homeManager.codex
     config.flake.modules.homeManager."pi-coding-agent"
     config.flake.modules.homeManager.jules
@@ -126,9 +132,45 @@ in
 
   flake.modules.darwin.m1-min = {
     host = minimalHost;
-    home-manager.users.${minimalHost.user.name} = {
-      imports = aiFullImports;
-      services.sops.enable = true;
-    };
+    home-manager.users.${minimalHost.user.name} =
+      { config, pkgs, ... }:
+      {
+        imports = aiFullImports;
+
+        home.packages = [ pkgs.gitingest ];
+
+        services = {
+          sops.enable = true;
+
+          repo-harness-mcp = {
+            enable = true;
+            repoPath = "${config.home.homeDirectory}/nix-config";
+            profile = "coding";
+            accessMode = "read_write";
+            host = "127.0.0.1";
+            port = 8765;
+            serverName = "repo-harness-coding";
+            publicEndpoint = null;
+            autoStart = true;
+          };
+
+          # Default public path: an ephemeral *.trycloudflare.com Quick Tunnel.
+          # No Cloudflare account, custom domain, tunnel UUID, or DNS setup is
+          # required. Use rh-mcp-quick-restart to create/replace the endpoint.
+          repo-harness-mcp-quick = {
+            enable = true;
+            waitSeconds = 45;
+            publishGraceSeconds = 20;
+            publicReadySeconds = 120;
+            retryIntervalSeconds = 5;
+            probeCount = 5;
+          };
+
+          # Optional stable-domain path. The module remains imported so it can
+          # be enabled deliberately after Cloudflare login/tunnel/DNS setup,
+          # but m1-min does not start a named tunnel by default.
+          cloudflared-mcp-tunnel.enable = false;
+        };
+      };
   };
 }

@@ -9,7 +9,7 @@ set -euo pipefail
 #   GRAPHIFY_SOURCE_DIR=/workspace/vendor/graphify
 
 readonly default_repository="https://github.com/safishamsi/graphify.git"
-readonly default_revision="75922443866244d4bb6a266b8e085aa82b10dbe7"
+readonly default_revision="0b2bd938c4a48e91d27f0ba09b96409e0a36c78a"
 readonly default_extras="mcp,watch,svg,sql,terraform"
 readonly default_mcp_version="1.26.0"
 

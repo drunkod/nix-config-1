@@ -7,7 +7,7 @@
     }:
     let
       repoHarnessSource =
-        "git+https://github.com/drunkod/repo-harness.git#agent/chatgpt-github-create-mvp";
+        "git+https://github.com/drunkod/repo-harness.git#mvp";
 
       repoHarnessRuntimeInputs = with pkgs; [
         bash
@@ -17,6 +17,7 @@
         findutils
         git
         jq
+        nodejs_24
       ];
 
       # Bun 1.3.13 can report DependencyLoop when replacing an existing npm
@@ -192,6 +193,7 @@
         packages = [
           pkgs.bun
           pkgs.jq
+          pkgs.nodejs_24
           repoHarnessLauncher
           repoHarnessBootstrap
           repoHarnessGenerateHostConfig

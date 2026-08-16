@@ -52,10 +52,21 @@
 
 # Generated / local artifacts
 .graphify-src/
+.graphify-runtime/
 .venv/
+venv/
 graphify-out/
 result/
 draft/
+node_modules/
+dist/
+build/
+target/
+.cache/
+coverage/
 
-# Repository docs directories
+# Repository docs and asset directories
 /docs/
+/assets/
+/images/
+/screenshots/

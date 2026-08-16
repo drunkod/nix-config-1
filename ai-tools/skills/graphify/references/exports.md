@@ -1,87 +1,38 @@
-# graphify reference: extra exports and benchmark
+# Graphify reference: exports and MCP
 
-Load this when the user asks for optional export flows (`--wiki`, `--neo4j`, `--neo4j-push`, `--falkordb`, `--falkordb-push`, `--svg`, `--graphml`, `--mcp`) or when the corpus is large enough for the token-reduction benchmark. This is a generated upstream reference: export subcommands vary by Graphify version, so verify availability with `graphify --help`, `graphify export --help`, or the configured Nix wrapper before running them. Each step runs only for its own requested flag.
+Version scope: Graphify revision `0b2bd938c4a48e91d27f0ba09b96409e0a36c78a`. Export support is version-sensitive: verify it in the root `graphify --help`. At this revision, `graphify export --help` prints only generic help and is not an authoritative capability list.
 
-### Step 6b - Wiki (only if --wiki flag)
+## Supported export
 
-**Only run this step if `--wiki` was explicitly given in the original command.**
-
-Run this before Step 9 (cleanup) so `.graphify_labels.json` is still available.
+The root help advertises only the call-flow HTML export:
 
 ```bash
-graphify export wiki
+graphify export callflow-html --output /absolute/path/to/callflow.html
 ```
 
-### Step 7 - Neo4j export (only if --neo4j or --neo4j-push flag)
+Run it from the project whose `graphify-out/graph.json` should be exported. Confirm the graph belongs to that project first. Do not recommend wiki, Neo4j, FalkorDB, SVG, or GraphML exports unless a future root help explicitly advertises them.
 
-**If `--neo4j`** - generate a Cypher file for manual import:
+For a hierarchy view, the current CLI also supports:
 
 ```bash
-graphify export neo4j
+graphify tree \
+  --graph /absolute/project/graphify-out/graph.json \
+  --output /absolute/project/graphify-out/GRAPH_TREE.html
 ```
 
-**If `--neo4j-push <uri>`** - push directly to a running Neo4j instance. Ask the user for credentials if not provided:
+## Explicit MCP
+
+MCP is not an export. Prefer the repository wrapper and identify one graph explicitly:
 
 ```bash
-graphify export neo4j --push bolt://localhost:7687 --user neo4j --password PASSWORD
+graphify-mcp-run /absolute/project/graphify-out/graph.json
 ```
 
-Default URI is `bolt://localhost:7687`, default user is `neo4j`. Uses MERGE - safe to re-run without creating duplicates.
-
-### Step 7a - FalkorDB export (only if --falkordb or --falkordb-push flag)
-
-**If `--falkordb`** - generate a Cypher file. The statements are OpenCypher, but FalkorDB's `GRAPH.QUERY` runs one statement at a time (no bulk script import like Neo4j's `cypher-shell`), so prefer `--falkordb-push` to load a graph. Use this only when you want the portable `cypher.txt` artifact:
+Equivalent flake app when installed commands are unavailable:
 
 ```bash
-graphify export falkordb
+nix run <nix-config-flake>#graphify-mcp-run -- \
+  /absolute/project/graphify-out/graph.json
 ```
 
-**If `--falkordb-push <uri>`** - push directly to a running FalkorDB instance. Credentials are optional; ask the user only if the instance requires auth:
-
-```bash
-graphify export falkordb --push falkordb://localhost:6379
-```
-
-Default URI is `falkordb://localhost:6379` (the scheme is informational - `redis://` or a bare `host:port` work too), auth is optional, and the target graph defaults to `graphify`. Uses MERGE - safe to re-run without creating duplicates.
-
-### Step 7b - SVG export (only if --svg flag)
-
-```bash
-graphify export svg
-```
-
-### Step 7c - GraphML export (only if --graphml flag)
-
-```bash
-graphify export graphml
-```
-
-### Step 7d - MCP server (only if --mcp flag)
-
-```bash
-python3 -m graphify.serve graphify-out/graph.json
-```
-
-This starts a stdio MCP server that exposes tools: `query_graph`, `get_node`, `get_neighbors`, `get_community`, `god_nodes`, `graph_stats`, `shortest_path`. Add it to any MCP-compatible agent orchestrator so agents can query the graph live. In this Zed/Nix setup, prefer the configured `graphify-mcp` wrapper or `nix run <nix-config-flake>#graphify-mcp -- <graph.json>` when available.
-
-For MCP clients that use JSON server config, adapt this example:
-```json
-{
-  "mcpServers": {
-    "graphify": {
-      "command": "python3",
-      "args": ["-m", "graphify.serve", "/absolute/path/to/graphify-out/graph.json"]
-    }
-  }
-}
-```
-
-### Step 8 - Token reduction benchmark (only if total_words > 5000)
-
-If `total_words` from `graphify-out/.graphify_detect.json` is greater than 5,000, run:
-
-```bash
-graphify benchmark
-```
-
-Print the output directly in chat. If `total_words <= 5000`, skip silently - the graph value is structural clarity, not token compression, for small corpora.
+MCP requires the `mcp` extra. Never start it through `python -m`, never invoke `graphify-out/.graphify_python`, and never rely on an unrelated default graph.

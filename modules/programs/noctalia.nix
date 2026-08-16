@@ -11,18 +11,23 @@
       host,
       ...
     }:
+    let
+      noctaliaPackage = inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      legacyPluginRegistry = "https://github.com/noctalia-dev/legacy-v4-plugins";
+    in
     {
       imports = [
         inputs.noctalia.homeModules.default
       ];
 
       home.packages = with pkgs; [
-        inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default
         quickshell
       ];
 
       programs.noctalia-shell = {
         enable = true;
+        package = noctaliaPackage;
+
         settings = {
           bar = {
             barType = "simple";
@@ -130,29 +135,31 @@
           };
           hooks = {
             enabled = true;
-            startup = "${pkgs.noctalia-shell}/bin/noctalia-shell ipc call lockScreen lock";
+            startup = "${noctaliaPackage}/bin/noctalia-shell ipc call lockScreen lock";
           };
-          plugins = {
-            sources = [
-              {
-                enabled = true;
-                name = "Official Noctalia Plugins";
-                url = "https://github.com/noctalia-dev/noctalia-plugins";
-              }
-            ];
-            states = {
-              privacy-indicator = {
-                enabled = true;
-                sourceUrl = "https://github.com/noctalia-dev/noctalia-plugins";
-              };
-            };
-            version = 1;
-          };
-          pluginSettings = {
+        };
+
+        plugins = {
+          sources = [
+            {
+              enabled = true;
+              name = "Official Noctalia v4 Plugins";
+              url = legacyPluginRegistry;
+            }
+          ];
+          states = {
             privacy-indicator = {
-              hideInactive = true;
-              removeMargins = true;
+              enabled = true;
+              sourceUrl = legacyPluginRegistry;
             };
+          };
+          version = 2;
+        };
+
+        pluginSettings = {
+          privacy-indicator = {
+            hideInactive = true;
+            removeMargins = true;
           };
         };
       };

@@ -49,6 +49,7 @@
             tool_permissions = {
               default = "allow";
             };
+            sandbox_permissions.allow_unsandboxed = true;
           };
         }
         // lib.optionalAttrs (config.programs.mcp.enable or false) {
@@ -56,7 +57,7 @@
             command = server.command;
             args = server.args or [ ];
             env = server.env or { };
-          }) config.programs.mcp.servers;
+          }) (lib.removeAttrs config.programs.mcp.servers [ "codewebchat" ]);
         }
       );
     };
