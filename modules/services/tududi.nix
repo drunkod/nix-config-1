@@ -110,7 +110,8 @@
           # Tududi treats true as the single-hop value 1 but emits a warning;
           # pass 1 directly for the Cloudflare reverse-proxy case.
           export TUDUDI_TRUST_PROXY=${escapeShellArg (if cfg.trustProxy then "1" else "false")}
-          export TUDUDI_SESSION_SECRET="$(cat "$session_secret_file")"
+          TUDUDI_SESSION_SECRET="$(cat "$session_secret_file")"
+          export TUDUDI_SESSION_SECRET
           export TUDUDI_USER_EMAIL=${escapeShellArg cfg.adminEmail}
           export FRONTEND_URL=${escapeShellArg effectiveFrontendUrl}
           export BACKEND_URL=${escapeShellArg effectiveBackendUrl}
@@ -135,7 +136,8 @@
               echo "Tududi: configured admin password file is missing or empty: $admin_password_file" >&2
               exit 1
             }
-            export TUDUDI_USER_PASSWORD="$(cat "$admin_password_file")"
+            TUDUDI_USER_PASSWORD="$(cat "$admin_password_file")"
+            export TUDUDI_USER_PASSWORD
             # The bootstrap password becomes invalid once declarative password
             # management is enabled; do not leave or later display it.
             rm -f "$bootstrap_admin_password_file"
@@ -144,7 +146,8 @@
               openssl rand -base64 24 >"$bootstrap_admin_password_file"
               chmod 600 "$bootstrap_admin_password_file"
             fi
-            export TUDUDI_USER_PASSWORD="$(cat "$bootstrap_admin_password_file")"
+            TUDUDI_USER_PASSWORD="$(cat "$bootstrap_admin_password_file")"
+            export TUDUDI_USER_PASSWORD
             provision_bootstrap_admin=1
           fi
 
@@ -191,7 +194,8 @@
           export NODE_ENV=production
           export DB_FILE=${escapeShellArg cfg.dbFile}
           export TUDUDI_UPLOAD_PATH=${escapeShellArg cfg.uploadDirectory}
-          export TUDUDI_API_TOKEN="$(cat "$token_file")"
+          TUDUDI_API_TOKEN="$(cat "$token_file")"
+          export TUDUDI_API_TOKEN
           export MCP_SERVER_NAME=${escapeShellArg cfg.mcp.serverName}
           export FF_ENABLE_MCP=true
           export NODE_PATH=${escapeShellArg "${cfg.package}/libexec/tududi/node_modules"}
