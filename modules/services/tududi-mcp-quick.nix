@@ -293,28 +293,33 @@
         };
 
         waitSeconds = mkOption {
-          type = types.ints.positive;
+          type = types.ints.between 10 120;
           default = 45;
+          description = "Maximum seconds to wait for the generated URL and HTTP/2 registration.";
         };
 
         publishGraceSeconds = mkOption {
-          type = types.ints.unsigned;
+          type = types.ints.between 0 120;
           default = 20;
+          description = "Quiet delay after HTTP/2 registration before the first public hostname lookup.";
         };
 
         publicReadySeconds = mkOption {
-          type = types.ints.positive;
+          type = types.ints.between 10 300;
           default = 120;
+          description = "Maximum seconds to wait for the public Tududi health endpoint.";
         };
 
         retryIntervalSeconds = mkOption {
-          type = types.ints.positive;
+          type = types.ints.between 1 30;
           default = 5;
+          description = "Seconds between public health retries.";
         };
 
         probeCount = mkOption {
-          type = types.ints.positive;
+          type = types.ints.between 1 20;
           default = 3;
+          description = "Number of consecutive HTTP 200 public health responses required before success.";
         };
       };
 
@@ -331,6 +336,7 @@
         ];
 
         home.packages = [
+          pkgs.cloudflared
           quickRestart
           quickStop
           quickTest
@@ -343,10 +349,10 @@
         '';
 
         home.shellAliases = {
-          td-mcp-quick-restart = "tududi-mcp-quick-restart";
-          td-mcp-quick-stop = "tududi-mcp-quick-stop";
-          td-mcp-quick-test = "tududi-mcp-quick-test";
-          td-mcp-quick-url = "tududi-mcp-quick-url";
+          td-mcp-quick-restart = "${quickRestart}/bin/tududi-mcp-quick-restart";
+          td-mcp-quick-stop = "${quickStop}/bin/tududi-mcp-quick-stop";
+          td-mcp-quick-test = "${quickTest}/bin/tududi-mcp-quick-test";
+          td-mcp-quick-url = "${quickUrl}/bin/tududi-mcp-quick-url";
         };
       };
     };
