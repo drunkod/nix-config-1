@@ -21,6 +21,7 @@
 
       cfg = config.services.tududi;
       isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+      system = pkgs.stdenv.hostPlatform.system;
       defaultStateDirectory = "${config.home.homeDirectory}/.local/share/tududi";
       defaultLogDirectory = "${config.home.homeDirectory}/.local/state/tududi";
       bracketHost = host: if host == "::1" then "[::1]" else host;
@@ -34,7 +35,7 @@
       effectiveFrontendUrl = if cfg.frontendUrl == null then localOrigin else cfg.frontendUrl;
       effectiveBackendUrl = if cfg.backendUrl == null then localOrigin else cfg.backendUrl;
 
-      upstreamPackage = inputs.tududi.packages.${pkgs.system}.default;
+      upstreamPackage = inputs.tududi.packages.${system}.default;
       darwinPackage = upstreamPackage.overrideAttrs (old: {
         # The upstream derivation builds successfully on aarch64-darwin when
         # unsupported-system checks are bypassed. Only relax its incorrect
@@ -73,8 +74,10 @@
 
           state_dir=${escapeShellArg cfg.stateDirectory}
           db_file=${escapeShellArg cfg.dbFile}
+          db_dir=${escapeShellArg (builtins.dirOf cfg.dbFile)}
           upload_dir=${escapeShellArg cfg.uploadDirectory}
           log_dir=${escapeShellArg cfg.logDirectory}
+          admin_email=${escapeShellArg cfg.adminEmail}
           session_secret_file=${escapeShellArg (if sessionSecretFile == null then "" else sessionSecretFile)}
           generated_session_secret_file=${escapeShellArg generatedSessionSecretFile}
           admin_password_file=${escapeShellArg (if adminPasswordFile == null then "" else adminPasswordFile)}
@@ -82,8 +85,8 @@
           bootstrap_admin_marker=${escapeShellArg bootstrapAdminMarker}
           provision_bootstrap_admin=0
 
-          mkdir -p "$state_dir" "$(dirname "$db_file")" "$upload_dir" "$log_dir"
-          chmod 700 "$state_dir" "$(dirname "$db_file")" "$upload_dir" "$log_dir"
+          mkdir -p "$state_dir" "$db_dir" "$upload_dir" "$log_dir"
+          chmod 700 "$state_dir" "$db_dir" "$upload_dir" "$log_dir"
 
           if [ -n "$session_secret_file" ]; then
             [ -s "$session_secret_file" ] || {
@@ -110,9 +113,9 @@
           # Tududi treats true as the single-hop value 1 but emits a warning;
           # pass 1 directly for the Cloudflare reverse-proxy case.
           export TUDUDI_TRUST_PROXY=${escapeShellArg (if cfg.trustProxy then "1" else "false")}
-          TUDUDI_SESSION_SECRET="$(cat "$session_secret_file")"
+          TUDUDI_SESSION_SECRET="$(<"$session_secret_file")"
           export TUDUDI_SESSION_SECRET
-          export TUDUDI_USER_EMAIL=${escapeShellArg cfg.adminEmail}
+          export TUDUDI_USER_EMAIL="$admin_email"
           export FRONTEND_URL=${escapeShellArg effectiveFrontendUrl}
           export BACKEND_URL=${escapeShellArg effectiveBackendUrl}
           export SWAGGER_ENABLED=false
@@ -136,17 +139,17 @@
               echo "Tududi: configured admin password file is missing or empty: $admin_password_file" >&2
               exit 1
             }
-            TUDUDI_USER_PASSWORD="$(cat "$admin_password_file")"
+            TUDUDI_USER_PASSWORD="$(<"$admin_password_file")"
             export TUDUDI_USER_PASSWORD
             # The bootstrap password becomes invalid once declarative password
             # management is enabled; do not leave or later display it.
             rm -f "$bootstrap_admin_password_file"
-          elif [ -n ${escapeShellArg cfg.adminEmail} ] && [ ! -f "$bootstrap_admin_marker" ]; then
+          elif [ -n "$admin_email" ] && [ ! -f "$bootstrap_admin_marker" ]; then
             if [ ! -s "$bootstrap_admin_password_file" ]; then
               openssl rand -base64 24 >"$bootstrap_admin_password_file"
               chmod 600 "$bootstrap_admin_password_file"
             fi
-            TUDUDI_USER_PASSWORD="$(cat "$bootstrap_admin_password_file")"
+            TUDUDI_USER_PASSWORD="$(<"$bootstrap_admin_password_file")"
             export TUDUDI_USER_PASSWORD
             provision_bootstrap_admin=1
           fi
@@ -194,7 +197,7 @@
           export NODE_ENV=production
           export DB_FILE=${escapeShellArg cfg.dbFile}
           export TUDUDI_UPLOAD_PATH=${escapeShellArg cfg.uploadDirectory}
-          TUDUDI_API_TOKEN="$(cat "$token_file")"
+          TUDUDI_API_TOKEN="$(<"$token_file")"
           export TUDUDI_API_TOKEN
           export MCP_SERVER_NAME=${escapeShellArg cfg.mcp.serverName}
           export FF_ENABLE_MCP=true
@@ -210,9 +213,10 @@
         runtimeInputs = with pkgs; [ coreutils ];
         text = ''
           set -euo pipefail
+          admin_email=${escapeShellArg cfg.adminEmail}
           password_file=${escapeShellArg bootstrapAdminPasswordFile}
           managed_password_file=${escapeShellArg (if adminPasswordFile == null then "" else adminPasswordFile)}
-          printf 'Email: %s\n' ${escapeShellArg cfg.adminEmail}
+          printf 'Email: %s\n' "$admin_email"
           if [ -n "$managed_password_file" ]; then
             echo "Password is managed by the configured secret file and is not printed."
           elif [ -s "$password_file" ]; then
@@ -356,7 +360,11 @@
         };
 
         mcp = {
-          enable = mkEnableOption "Tududi MCP feature and stdio registration" // { default = true; };
+          enable = mkOption {
+            type = types.bool;
+            default = true;
+            description = "Enable Tududi's MCP feature and register the local stdio MCP server.";
+          };
           serverName = mkOption {
             type = types.strMatching "[A-Za-z0-9][A-Za-z0-9._-]*";
             default = "tududi";
