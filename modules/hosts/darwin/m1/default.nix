@@ -39,6 +39,7 @@ let
     config.flake.modules.homeManager.repo-harness-mcp-quick
     config.flake.modules.homeManager.tududi
     config.flake.modules.homeManager.tududi-mcp-quick
+    config.flake.modules.homeManager.tududi-chatgpt-quick
     # Keep the named-tunnel module available as an opt-in stable-domain path.
     config.flake.modules.homeManager.cloudflared-mcp-tunnel
     config.flake.modules.homeManager.codex
@@ -199,6 +200,20 @@ in
             publicReadySeconds = 120;
             retryIntervalSeconds = 5;
             probeCount = 3;
+          };
+
+          # Explicitly unsafe developer-only ChatGPT MVP. This starts nothing
+          # automatically. td-chatgpt-quick-restart launches a temporary local
+          # anonymous JSON MCP gateway plus a random trycloudflare.com tunnel;
+          # td-chatgpt-quick-stop kills both after the test.
+          tududi-chatgpt-quick = {
+            enable = true;
+            port = 3003;
+            waitSeconds = 45;
+            publishGraceSeconds = 10;
+            publicReadySeconds = 90;
+            retryIntervalSeconds = 3;
+            probeCount = 2;
           };
 
           # Optional stable-domain path. The module remains imported so it can
