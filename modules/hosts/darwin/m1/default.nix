@@ -180,12 +180,11 @@ in
             autoStart = true;
             mcp.enable = true;
 
-            # Bootstrap safely before adding secret material to the repository:
-            # a persistent local session secret is generated under ~/.local/share.
-            # After creating a Tududi tt_ API token, add all three Tududi keys to
-            # secrets/default.yaml with sops and flip this to true.
+            # Keep the session secret, declarative admin password, and MCP API
+            # token encrypted in the shared SOPS file and materialize them only
+            # into the Home Manager runtime secret directory.
             sops = {
-              enable = false;
+              enable = true;
               sopsFile = ../../../../secrets/default.yaml;
             };
           };
