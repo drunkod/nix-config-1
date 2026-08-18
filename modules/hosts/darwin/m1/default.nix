@@ -40,6 +40,8 @@ let
     config.flake.modules.homeManager.tududi
     config.flake.modules.homeManager.tududi-mcp-quick
     config.flake.modules.homeManager.tududi-chatgpt-quick
+    config.flake.modules.homeManager.touchpoint
+    config.flake.modules.homeManager.touchpoint-mcp-proxy
     # Keep the named-tunnel module available as an opt-in stable-domain path.
     config.flake.modules.homeManager.cloudflared-mcp-tunnel
     config.flake.modules.homeManager.codex
@@ -214,6 +216,25 @@ in
             publicReadySeconds = 90;
             retryIntervalSeconds = 3;
             probeCount = 2;
+          };
+
+          # Touchpoint runs as a local stdio MCP server. Installation is kept in
+          # a stable user venv so the executable path does not churn with every
+          # Nix generation; run tp-install after the first rebuild or upgrade.
+          touchpoint = {
+            enable = true;
+            version = "0.3.0";
+            mode = "no-vision";
+            cdpDiscover = true;
+            axMessagingTimeout = 1.0;
+          };
+
+          # Developer-only public ChatGPT transport for Touchpoint. Nothing is
+          # started automatically. Use either tp-mcp-cf-* (TryCloudflare) or
+          # tp-mcp-gla-* (mcp-proxy Public Tunnel), one variant at a time.
+          touchpoint-mcp-proxy = {
+            enable = true;
+            port = 8081;
           };
 
           # Optional stable-domain path. The module remains imported so it can
