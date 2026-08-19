@@ -38,6 +38,7 @@ let
     config.flake.modules.homeManager.repo-harness-mcp
     config.flake.modules.homeManager.repo-harness-mcp-quick
     config.flake.modules.homeManager.tududi
+    config.flake.modules.homeManager.tududi-mcp-proxy
     config.flake.modules.homeManager.tududi-mcp-quick
     config.flake.modules.homeManager.tududi-chatgpt-quick
     config.flake.modules.homeManager.touchpoint
@@ -190,6 +191,14 @@ in
               enable = true;
               sopsFile = ../../../../secrets/default.yaml;
             };
+          };
+
+          # Install the two tested mcp-proxy wrappers only on m1-min.
+          # Nothing starts automatically; launch a variant explicitly when
+          # testing ChatGPT remote MCP access.
+          tududi-mcp-proxy = {
+            enable = true;
+            port = 8080;
           };
 
           # Default remote variant for Tududi MCP: an explicit, ephemeral

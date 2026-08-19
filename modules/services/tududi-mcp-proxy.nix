@@ -1,11 +1,8 @@
+{ ... }:
+
 {
   flake.modules.homeManager.tududi-mcp-proxy =
-    {
-      config,
-      lib,
-      pkgs,
-      ...
-    }:
+    { config, lib, pkgs, ... }:
     let
       inherit (lib) mkEnableOption mkIf mkOption types;
       cfg = config.services.tududi-mcp-proxy;
