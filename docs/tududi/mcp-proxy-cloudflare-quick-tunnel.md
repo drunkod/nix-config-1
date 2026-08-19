@@ -1,14 +1,16 @@
 # Tududi MCP Proxy via Cloudflare Quick Tunnel
 
-This guide launches the tested `mcp-proxy` local bridge and exposes it through a temporary `*.trycloudflare.com` URL.
+Use this guide when you specifically want the tested `mcp-proxy` bridge exposed through a temporary `*.trycloudflare.com` URL.
 
-This is an MVP test path. The public MCP endpoint has no additional authentication layer.
+For the simplest public test, use [the `mcp-proxy` Public Tunnel guide](mcp-proxy-public-tunnel.md) instead.
+
+This is an intentionally unauthenticated MVP path.
 
 ## Flow
 
 ```text
 ChatGPT
-  -> https://<random>.trycloudflare.com/mcp
+  -> https://<generated>.trycloudflare.com/mcp
   -> cloudflared Quick Tunnel
   -> 127.0.0.1:8080/mcp
   -> mcp-proxy
@@ -16,55 +18,36 @@ ChatGPT
   -> Tududi
 ```
 
-`tududi-mcp-stdio` continues to load the Tududi API token from the existing SOPS configuration. Do not pass the `tt_...` token to `mcp-proxy` or Cloudflare.
+`tududi-mcp-stdio` loads the Tududi API token from SOPS locally. Do not pass the `tt_...` token to ChatGPT, `mcp-proxy`, or Cloudflare.
 
-## 1. Switch to the MVP branch
+## 1. Activate the tested profile
 
 ```bash
 cd ~/nix-config
-git fetch origin
 git switch agent/tududi-mcp-proxy-mvp
 git pull --ff-only
-```
-
-## 2. Rebuild `m1-min`
-
-```bash
-darwin-rebuild switch --flake .#m1-min
+sudo darwin-rebuild switch --flake .#m1-min
 exec zsh -l
 ```
 
-The profile installs the wrapper from `modules/services/tududi-mcp-proxy.nix`.
-
-Verify it is available:
+Verify the commands:
 
 ```bash
+td-health
 command -v tududi-mcp-proxy-local
 command -v tududi-mcp-stdio
 command -v cloudflared
 ```
 
-## 3. Verify Tududi
+## 2. Start the local MCP bridge
 
-```bash
-td-health
-```
-
-Expected result includes:
-
-```json
-{"status":"ok"}
-```
-
-## 4. Start `mcp-proxy`
-
-Open terminal 1:
+Terminal 1:
 
 ```bash
 tududi-mcp-proxy-local
 ```
 
-The wrapper runs the equivalent of:
+Equivalent command:
 
 ```bash
 npx --yes mcp-proxy \
@@ -74,97 +57,113 @@ npx --yes mcp-proxy \
   tududi-mcp-stdio
 ```
 
-Expected log lines include:
+Expected output includes the Tududi stdio server starting, authentication succeeding, tools loading, and `mcp-proxy` listening on port `8080`.
 
-```text
-Tududi MCP server running on stdio
-Authenticated as: ...
-Available tools: ...
-starting server on port 8080
-```
+## 3. Test locally
 
-Leave terminal 1 running.
-
-## 5. Test the local MCP endpoint
-
-In terminal 2:
+Terminal 2:
 
 ```bash
 curl --silent --show-error --max-time 20 \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"cloudflare-test","version":"0.1"}}}' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"cloudflare-local-test","version":"0.1"}}}' \
   http://127.0.0.1:8080/mcp
 ```
 
-A successful response contains an MCP `initialize` result and Tududi server information.
+Continue only after this returns an MCP `initialize` result.
 
-## 6. Start the Cloudflare Quick Tunnel
+## 4. Start the Cloudflare Quick Tunnel
 
-Still in terminal 2:
+In Terminal 2:
 
 ```bash
-cloudflared tunnel --url http://127.0.0.1:8080
+cloudflared tunnel \
+  --protocol http2 \
+  --url http://127.0.0.1:8080
 ```
 
-Wait for a generated URL similar to:
+Using `--protocol http2` avoids depending on outbound QUIC. This matched the successful test environment where HTTP/2 connectivity worked even when QUIC checks failed.
+
+Cloudflare prints a URL similar to:
 
 ```text
 https://random-words.trycloudflare.com
 ```
 
-The MCP URL is:
+Your MCP URL is:
 
 ```text
 https://random-words.trycloudflare.com/mcp
 ```
 
-## 7. Test through Cloudflare
+## 5. Wait for the public hostname and test it
 
-Replace the hostname below with the URL printed by `cloudflared`:
+A newly-created Quick Tunnel hostname can take a short time to become reachable. Do not configure ChatGPT until the public `initialize` succeeds.
+
+Set the generated URL:
 
 ```bash
 MCP_URL='https://random-words.trycloudflare.com/mcp'
-
-curl --silent --show-error --max-time 30 \
-  -H 'Content-Type: application/json' \
-  -H 'Accept: application/json, text/event-stream' \
-  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"cloudflare-public-test","version":"0.1"}}}' \
-  "$MCP_URL"
 ```
 
-If this returns the Tududi MCP initialize response, the tunnel is ready.
+Then retry the same MCP probe for up to about one minute:
 
-## 8. Add it to ChatGPT
-
-Use the generated MCP URL:
-
-```text
-https://random-words.trycloudflare.com/mcp
+```bash
+for attempt in {1..12}; do
+  if curl --fail --silent --show-error --max-time 20 \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"cloudflare-public-test","version":"0.1"}}}' \
+    "$MCP_URL"; then
+    break
+  fi
+  sleep 5
+done
 ```
 
-For this MVP test, use the unauthenticated/no-auth connection option.
+The current setup was tested successfully through Cloudflare after earlier attempts experienced temporary hostname/DNS publication delays.
 
-Test with a read request first, for example:
+## 6. Add it to ChatGPT
+
+Create a developer MCP connection using the generated `/mcp` URL and choose no authentication for this MVP.
+
+Start with read-only calls such as:
 
 ```text
 List my Tududi projects.
 ```
 
-Then try:
-
 ```text
 Show my open Tududi tasks.
 ```
 
-## 9. Stop the test
+## 7. Stop the test
 
-Press `Ctrl-C` in the `cloudflared` terminal, then press `Ctrl-C` in the `tududi-mcp-proxy-local` terminal.
+Stop `cloudflared` with `Ctrl-C`, then stop `tududi-mcp-proxy-local` with `Ctrl-C`.
 
-Confirm port 8080 is closed:
+Confirm the local bridge is closed:
 
 ```bash
 curl --silent --max-time 2 http://127.0.0.1:8080/mcp || true
 ```
 
-Because this is an intentionally unsafe MVP, do not leave the temporary public endpoint running when you are finished testing.
+## Troubleshooting
+
+### The hostname is printed but does not resolve
+
+Wait briefly and retry. If it still fails, stop `cloudflared` and create a fresh Quick Tunnel. The local `/mcp` probe should continue to work throughout this test.
+
+### QUIC fails
+
+Use the documented `--protocol http2` command. The tested network reported failed QUIC connectivity but successful HTTP/2 tunnel registration.
+
+### Streaming limitations
+
+Cloudflare documents Quick Tunnels as development-only and does not support long-lived Server-Sent Events. The tested MCP `initialize` call can still return finite SSE-style framing through `mcp-proxy`, but do not treat Quick Tunnel as a production streaming transport.
+
+For a stable hostname and full tunnel feature set, move to a named Cloudflare Tunnel after the MVP.
+
+## Security
+
+The public URL has no additional authentication. Anyone who has the URL can reach the exposed MCP tools. Stop both processes immediately after testing.
