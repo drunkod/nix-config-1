@@ -8,6 +8,7 @@ separate.
 
 | Goal | Documentation |
 |---|---|
+| Review pending repository follow-up work | [To Do](TODO.md) |
 | Configure and operate Repo Harness | [Repo Harness](repo-harness/README.md) |
 | Solve a common development task with context tools | [Developer recipes](developer-recipes/README.md) |
 | Configure CodeGraph or Graphify | [Code-intelligence tools](tools/README.md) |
