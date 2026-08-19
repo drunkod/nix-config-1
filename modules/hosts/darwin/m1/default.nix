@@ -138,7 +138,7 @@ in
     home-manager.users.${minimalHost.user.name} =
       { config, pkgs, ... }:
       {
-        imports = aiFullImports;
+        imports = aiFullImports ++ [ ../../../services/tududi-mcp-proxy.nix ];
 
         home.packages = [ pkgs.gitingest ];
 
@@ -188,6 +188,14 @@ in
               enable = true;
               sopsFile = ../../../../secrets/default.yaml;
             };
+          };
+
+          # Install the two tested mcp-proxy wrappers only on m1-min.
+          # Nothing starts automatically; launch a variant explicitly when
+          # testing ChatGPT remote MCP access.
+          tududi-mcp-proxy = {
+            enable = true;
+            port = 8080;
           };
 
           # Default remote variant for Tududi MCP: an explicit, ephemeral
