@@ -38,6 +38,7 @@ let
     config.flake.modules.homeManager.repo-harness-mcp
     config.flake.modules.homeManager.repo-harness-mcp-quick
     config.flake.modules.homeManager.tududi
+    config.flake.modules.homeManager.tududi-mcp-proxy
     config.flake.modules.homeManager.tududi-mcp-quick
     config.flake.modules.homeManager.tududi-chatgpt-quick
     # Keep the named-tunnel module available as an opt-in stable-domain path.
@@ -138,7 +139,7 @@ in
     home-manager.users.${minimalHost.user.name} =
       { config, pkgs, ... }:
       {
-        imports = aiFullImports ++ [ ../../../services/tududi-mcp-proxy.nix ];
+        imports = aiFullImports;
 
         home.packages = [ pkgs.gitingest ];
 
