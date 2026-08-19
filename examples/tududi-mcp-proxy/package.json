@@ -1,0 +1,11 @@
+{
+  "name": "tududi-mcp-proxy-example",
+  "private": true,
+  "scripts": {
+    "cloudflare": "mcp-proxy --port 8080 --stateless -- tududi-mcp-stdio",
+    "public-tunnel": "mcp-proxy --port 8080 --tunnel --stateless -- tududi-mcp-stdio"
+  },
+  "dependencies": {
+    "mcp-proxy": "latest"
+  }
+}
