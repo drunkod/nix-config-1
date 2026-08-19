@@ -1,6 +1,8 @@
 # Tududi on `m1-min`
 
-This profile integrates Tududi as a native Home Manager/nix-darwin user service and keeps it independent from Repo Harness MCP.
+This profile runs Tududi as a native Home Manager/nix-darwin user service and keeps it independent from Repo Harness MCP.
+
+For tunnel selection and the canonical test guides, see [the Tududi MCP index](README.md).
 
 ## Architecture
 
@@ -8,133 +10,148 @@ This profile integrates Tududi as a native Home Manager/nix-darwin user service 
 - Persistent SQLite: `~/.local/share/tududi/db/production.sqlite3`
 - Uploads: `~/.local/share/tududi/uploads`
 - Logs: `~/.local/state/tududi`
-- Local MCP: stdio via `tududi-mcp-stdio`, registered as `programs.mcp.servers.tududi`
-- Remote MCP: optional Quick Tunnel at `https://<random>.trycloudflare.com/api/mcp`
-- Remote authentication: `Authorization: Bearer tt_...`
+- Local MCP: `tududi-mcp-stdio`, registered as `programs.mcp.servers.tududi`
+- ChatGPT MVP bridge: `mcp-proxy` on `127.0.0.1:8080/mcp`
+- Public MVP choices:
+  - built-in `mcp-proxy --tunnel` -> `*.tunnel.gla.ma/mcp`
+  - Cloudflare Quick Tunnel -> `*.trycloudflare.com/mcp`
+- Native Tududi HTTP MCP: `/api/mcp`, authenticated with the Tududi `tt_...` bearer token
 
-Repo Harness remains on `127.0.0.1:8765` and continues to use its own Quick Tunnel/OAuth workflow.
+Repo Harness remains a separate service with its own MCP and tunnel/authentication configuration.
 
-## First activation
-
-The upstream Tududi package comes from the researched `feature/nixos-module` revision `2fa53e92223773c5a5a288e9c0252bc2ea952064`. The repository intentionally does not make Tududi's nixpkgs input follow this flake's `nixos-unstable` input yet.
-
-Because this change adds a new flake input, refresh the lock file once on a machine with Nix/network access. Current Nix uses:
-
-```bash
-nix flake update tududi
-```
-
-Commit the resulting `flake.lock` change with the integration once it has been generated on the M1.
-
-You can validate the upstream native package independently before switching the host:
+## Activate the profile
 
 ```bash
-NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1 \
-  nix build github:dlip/tududi/2fa53e92223773c5a5a288e9c0252bc2ea952064#tududi \
-  --impure \
-  --show-trace
+cd ~/nix-config
+git switch agent/tududi-mcp-proxy-mvp
+git pull --ff-only
+sudo darwin-rebuild switch --flake .#m1-min
+exec zsh -l
 ```
 
-The upstream package is marked Linux-only even though it builds successfully on Apple Silicon. The local adapter therefore changes only `meta.platforms` to permit Darwin evaluation and deliberately preserves the complete upstream `buildNpmPackage` build inputs/hooks. Replacing `nativeBuildInputs` would remove the npm setup hook and cause `npm: command not found` during `installPhase`.
-
-Activate the profile:
-
-```bash
-darwin-rebuild switch --flake .#m1-min
-```
-
-Check the service and print the one-time bootstrap credentials:
+Check Tududi:
 
 ```bash
 td-health
-td-bootstrap-credentials
 open http://127.0.0.1:3002
 ```
 
-The initial account is `admin@tududi.invalid`, a reserved non-deliverable domain. On first start, the module generates a random bootstrap password at `~/.local/share/tududi/bootstrap-admin-password` (mode `0600`), provisions that verified user as admin, and writes a marker so later restarts do **not** overwrite password changes.
+## First login
 
-The bootstrap configuration also generates a persistent session secret at `~/.local/share/tududi/session-secret`. This avoids putting generated secrets in the Nix store while allowing the app to start before SOPS keys exist.
+The initial account is `admin@tududi.invalid`. On first start, the module generates a bootstrap password outside the Nix store and provisions the user as admin.
 
-## Configure SOPS secrets
+Print the bootstrap credentials when needed:
 
-Log in with the bootstrap credentials, then create a token under **Profile -> API Keys**. Tududi tokens used by MCP start with `tt_`. Before enabling declarative admin-password reconciliation, set `services.tududi.adminEmail` to the account email you want Nix to manage (or keep `admin@tududi.invalid`).
+```bash
+td-bootstrap-credentials
+```
 
-Edit the existing encrypted file with SOPS and add:
+See [First login](how-first-login.md) for the short setup guide.
+
+## SOPS secrets
+
+The `m1-min` profile uses the shared encrypted `secrets/default.yaml` for:
 
 ```yaml
 tududi:
-  session-secret: <long-random-secret>
-  admin-password: <admin-password>
-  api-token: <tt_...>
+  session-secret: <encrypted value>
+  admin-password: <encrypted value>
+  api-token: <encrypted tt_... value>
 ```
 
-For example, generate a session secret locally with:
+The values are materialized into runtime secret files by SOPS/Home Manager. The Tududi API token is not interpolated into the Nix store.
 
-```bash
-openssl rand -hex 64
-```
+Do not commit plaintext secret values.
 
-Do not commit plaintext secret values. Use the existing SOPS/Age workflow for `secrets/default.yaml`.
+## Local MCP
 
-After all three encrypted keys exist, change the `m1-min` block to:
-
-```nix
-services.tududi.sops.enable = true;
-```
-
-and rebuild. The module then reads all secret values from SOPS runtime files; the values are never interpolated into Nix derivations or MCP `env` attributes. The obsolete bootstrap password and locally generated session-secret files are removed after the corresponding explicit secret sources become active.
-
-The stdio MCP registration is already present. Verify it directly with:
+The primary local MCP command is:
 
 ```bash
 td-mcp-stdio
 ```
 
-If the API token is not configured yet, the wrapper fails closed with instructions rather than starting an unauthenticated MCP process.
+The underlying `tududi-mcp-stdio` wrapper reads the SOPS-managed API token locally and starts Tududi's stdio MCP server.
 
-## Quick Tunnel remote MCP
+This is the common upstream for both tested `mcp-proxy` public variants.
 
-Quick Tunnel is available but deliberately not auto-started, because every replacement gets a new random hostname. It requires `services.tududi.mcp.enable = true`, because that option also enables Tududi's HTTP `/api/mcp` feature flag.
+## Recommended ChatGPT MVP: `mcp-proxy` Public Tunnel
 
-Start or replace it:
+Start:
+
+```bash
+tududi-mcp-proxy-public
+```
+
+It creates a temporary URL:
+
+```text
+https://<generated>.tunnel.gla.ma/mcp
+```
+
+This was tested end-to-end with ChatGPT. See [`mcp-proxy` Public Tunnel](mcp-proxy-public-tunnel.md).
+
+The public endpoint has no additional authentication. Stop it with `Ctrl-C` after testing.
+
+## Cloudflare Quick Tunnel + `mcp-proxy`
+
+Start the local bridge:
+
+```bash
+tududi-mcp-proxy-local
+```
+
+Then, in another terminal:
+
+```bash
+cloudflared tunnel \
+  --protocol http2 \
+  --url http://127.0.0.1:8080
+```
+
+Use:
+
+```text
+https://<generated>.trycloudflare.com/mcp
+```
+
+This path was also tested end-to-end. Earlier attempts showed temporary hostname/DNS warm-up, so test the public MCP `initialize` request before adding the URL to ChatGPT.
+
+See [Cloudflare Quick Tunnel](mcp-proxy-cloudflare-quick-tunnel.md).
+
+## Native Tududi HTTP Quick Tunnel
+
+The older `td-mcp-quick-*` helpers expose Tududi's own HTTP origin through TryCloudflare:
 
 ```bash
 td-mcp-quick-restart
-```
-
-Print the current MCP endpoint:
-
-```bash
 td-mcp-quick-url
-```
-
-Test local health, public health, and—when the SOPS API token is available—authenticated MCP status:
-
-```bash
 td-mcp-quick-test
-```
-
-The authenticated status test requires Tududi to report `{ "enabled": true }`; an authenticated but disabled MCP endpoint is treated as a failure.
-
-Stop it:
-
-```bash
 td-mcp-quick-stop
 ```
 
-The Quick Tunnel helpers verify that a saved PID still belongs to a `cloudflared tunnel --url <local Tududi origin>` process before sending a signal, so a stale PID file cannot kill an unrelated process after PID reuse.
-
-Remote clients use the printed URL and the Tududi API token:
+Remote MCP requests use Tududi's native endpoint:
 
 ```text
-POST https://<random>.trycloudflare.com/api/mcp
+POST https://<generated>.trycloudflare.com/api/mcp
 Authorization: Bearer tt_...
 ```
 
-Do not reuse the Repo Harness OAuth/bootstrap helpers for Tududi. Tududi's HTTP MCP endpoint accepts its own Bearer API token, while Repo Harness remains a separate service and auth domain.
+This is appropriate for clients that can send the Tududi bearer token. It is separate from the anonymous `mcp-proxy` ChatGPT MVP.
 
-## Security boundary
+The direct Quick Tunnel publishes the complete local Tududi HTTP origin, not only `/api/mcp`, so keep it stopped when it is not needed.
 
-The MVP Quick Tunnel points `cloudflared` directly at `127.0.0.1:3002`, so the generated hostname publishes the complete Tududi HTTP origin, not only `/api/mcp`. Tududi authentication still protects authenticated API routes, but the exposure is intentionally broader than a dedicated MCP-only reverse proxy.
+## Legacy custom ChatGPT gateway
 
-For a hardened stable deployment, place a local reverse proxy in front of Tududi and expose only `/api/mcp`, `/api/health`, and any explicitly required OAuth discovery paths, then point Cloudflare at that proxy instead.
+The `td-chatgpt-quick-*` commands are still installed, but the custom gateway is now superseded by `mcp-proxy` for new MVP testing. See [Legacy custom TryCloudflare MVP](chatgpt-trycloudflare-mvp-unsafe.md).
+
+## Production direction
+
+For a stable public endpoint:
+
+- use a stable named tunnel rather than a random development hostname;
+- expose an MCP-only listener instead of the full Tududi web origin;
+- add a real authentication boundary before write-capable tools; and
+- keep the Tududi `tt_...` credential behind that local boundary.
+
+See [ChatGPT authentication and production notes](chatgpt-plugin-mcp.md).
