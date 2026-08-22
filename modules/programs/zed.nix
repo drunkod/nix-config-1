@@ -9,6 +9,9 @@
     let
       settingsFormat = pkgs.formats.json { };
       aiTools = import ../../ai-tools { inherit lib; };
+      zedCli = pkgs.writeShellScriptBin "zed" ''
+        exec /Applications/Zed.app/Contents/MacOS/cli "$@"
+      '';
     in
     {
       # Nix language server + formatter, installed declaratively so Zed never
@@ -17,6 +20,7 @@
       home.packages = [
         pkgs.nil
         pkgs.nixfmt-rfc-style
+        zedCli
       ];
 
       home.file.".agents/skills".source = aiTools.skillsDir;
