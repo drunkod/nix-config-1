@@ -51,20 +51,93 @@
             exit 0
           fi
 
-          if ! /usr/bin/xcode-select -p >/dev/null 2>&1; then
-            echo "Xcode command line tools are required. Run: xcode-select --install" >&2
+          # Zed's Metal build cannot use the standalone Command Line Tools SDK.
+          # When full Xcode is installed, prefer it for this bootstrap without
+          # mutating the machine-wide xcode-select setting or requiring sudo.
+          default_xcode="/Applications/Xcode.app/Contents/Developer"
+          active_developer_dir="$(/usr/bin/xcode-select -p 2>/dev/null || true)"
+
+          if [ -z "''${DEVELOPER_DIR:-}" ] \
+            && [ -d "$default_xcode" ] \
+            && { [ -z "$active_developer_dir" ] \
+              || [ "$active_developer_dir" = "/Library/Developer/CommandLineTools" ]; }
+          then
+            export DEVELOPER_DIR="$default_xcode"
+            echo "Using full Xcode for the Zed eval-cli build:"
+            echo "  $DEVELOPER_DIR"
+            if [ -n "$active_developer_dir" ]; then
+              echo "Global xcode-select remains unchanged:"
+              echo "  $active_developer_dir"
+            fi
+            echo
+          fi
+
+          developer_dir="''${DEVELOPER_DIR:-$active_developer_dir}"
+
+          if [ -z "$developer_dir" ]; then
+            printf '%s\n' \
+              "Xcode is required to build Zed eval-cli on macOS." \
+              "Install full Xcode, open it once, then rerun rh-zed-eval-bootstrap." >&2
             exit 2
+          fi
+
+          if [ "$developer_dir" = "/Library/Developer/CommandLineTools" ]; then
+            printf '%s\n' \
+              "Only Apple's standalone Command Line Tools are active:" \
+              "  $developer_dir" \
+              "" \
+              "Zed's macOS build requires full Xcode because eval-cli links dependencies that compile Metal shaders." \
+              "Install/open Xcode.app, then rerun rh-zed-eval-bootstrap." \
+              "The bootstrap will use /Applications/Xcode.app/Contents/Developer automatically;" \
+              "you do not need to change the global xcode-select setting." >&2
+            exit 2
+          fi
+
+          if [ ! -d "$developer_dir" ]; then
+            printf '%s\n' \
+              "The selected Xcode developer directory does not exist:" \
+              "  $developer_dir" \
+              "Fix DEVELOPER_DIR or install/open Xcode.app, then retry." >&2
+            exit 2
+          fi
+
+          # Xcode 26/macOS 26 can ship the Metal toolchain as an on-demand
+          # component. If Metal is absent, try the documented component install
+          # automatically because this command is already an explicit bootstrap.
+          if ! /usr/bin/xcrun --find metal >/dev/null 2>&1; then
+            darwin_major="$(uname -r | cut -d. -f1)"
+            if [ "$darwin_major" -ge 25 ]; then
+              echo "Metal is not available from the selected Xcode."
+              echo "Attempting to install Xcode's MetalToolchain component..."
+              if /usr/bin/xcodebuild -downloadComponent MetalToolchain; then
+                echo "MetalToolchain component download completed."
+              else
+                echo "Automatic MetalToolchain component installation did not complete." >&2
+              fi
+              echo
+            fi
           fi
 
           if ! /usr/bin/xcrun --find metal >/dev/null 2>&1; then
             printf '%s\n' \
-              "Zed's macOS build requires the Xcode Metal toolchain." \
-              "Install/open full Xcode and select it with:" \
-              "  sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer" \
-              "On macOS 26 you may also need:" \
-              "  xcodebuild -downloadComponent MetalToolchain" >&2
+              "Zed's macOS build requires the Xcode Metal toolchain, but 'metal' is still unavailable." \
+              "Developer directory used by this bootstrap:" \
+              "  $developer_dir" \
+              "" \
+              "Finish Xcode setup, then retry:" \
+              "  sudo xcodebuild -runFirstLaunch" \
+              "  sudo xcodebuild -license accept" \
+              "" \
+              "On macOS 26, if needed, also run:" \
+              "  xcodebuild -downloadComponent MetalToolchain" \
+              "" \
+              "Then rerun:" \
+              "  rh-zed-eval-bootstrap" >&2
             exit 2
           fi
+
+          echo "Xcode developer directory: $developer_dir"
+          echo "Metal compiler: $(/usr/bin/xcrun --find metal)"
 
           sdk_path="$(/usr/bin/xcrun --show-sdk-path)"
           export BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$sdk_path"
@@ -115,6 +188,7 @@
           echo "  $eval_cli"
           echo "source pin: $actual"
           echo "rust toolchain: $toolchain"
+          echo "Xcode developer directory: $developer_dir"
           echo
           echo "Verify with:"
           echo "  rh-zed-eval-check"
