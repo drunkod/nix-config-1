@@ -51,18 +51,113 @@
             exit 0
           fi
 
+          find_full_xcode() {
+            local app
+            for app in \
+              /Applications/Xcode.app \
+              /Applications/Xcode-*.app
+            do
+              if [ -d "$app/Contents/Developer" ]; then
+                printf '%s\n' "$app/Contents/Developer"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          find_brew() {
+            if command -v brew >/dev/null 2>&1; then
+              command -v brew
+              return 0
+            fi
+            if [ -x /opt/homebrew/bin/brew ]; then
+              printf '%s\n' /opt/homebrew/bin/brew
+              return 0
+            fi
+            if [ -x /usr/local/bin/brew ]; then
+              printf '%s\n' /usr/local/bin/brew
+              return 0
+            fi
+            return 1
+          }
+
+          find_xcodes() {
+            if command -v xcodes >/dev/null 2>&1; then
+              command -v xcodes
+              return 0
+            fi
+            if [ -x /opt/homebrew/bin/xcodes ]; then
+              printf '%s\n' /opt/homebrew/bin/xcodes
+              return 0
+            fi
+            if [ -x /usr/local/bin/xcodes ]; then
+              printf '%s\n' /usr/local/bin/xcodes
+              return 0
+            fi
+            return 1
+          }
+
           # Zed's Metal build cannot use the standalone Command Line Tools SDK.
-          # When full Xcode is installed, prefer it for this bootstrap without
-          # mutating the machine-wide xcode-select setting or requiring sudo.
-          default_xcode="/Applications/Xcode.app/Contents/Developer"
+          # If full Xcode is absent, this explicit bootstrap installs the latest
+          # stable Xcode through XcodesOrg/xcodes. xcodes may interactively ask
+          # for Apple ID/2FA and the macOS user password during installation.
           active_developer_dir="$(/usr/bin/xcode-select -p 2>/dev/null || true)"
+          full_xcode="$(find_full_xcode || true)"
+
+          if [ -z "''${DEVELOPER_DIR:-}" ] && [ -z "$full_xcode" ]; then
+            echo "Full Xcode is not installed; bootstrapping it for Zed eval-cli."
+            echo "This downloads the latest stable Xcode from Apple's developer service."
+            echo "Xcodes may ask interactively for Apple ID/2FA and your macOS password."
+            echo
+
+            xcodes_bin="$(find_xcodes || true)"
+            if [ -z "$xcodes_bin" ]; then
+              brew_bin="$(find_brew || true)"
+              if [ -z "$brew_bin" ]; then
+                printf '%s\n' \
+                  "Homebrew is required to bootstrap the xcodes installer automatically." \
+                  "Install Homebrew (or install full Xcode manually), then rerun:" \
+                  "  rh-zed-eval-bootstrap" >&2
+                exit 2
+              fi
+
+              echo "Installing XcodesOrg/xcodes with Homebrew..."
+              "$brew_bin" install xcodesorg/made/xcodes
+
+              xcodes_bin="$(find_xcodes || true)"
+              if [ -z "$xcodes_bin" ]; then
+                brew_prefix="$("$brew_bin" --prefix)"
+                if [ -x "$brew_prefix/bin/xcodes" ]; then
+                  xcodes_bin="$brew_prefix/bin/xcodes"
+                fi
+              fi
+            fi
+
+            if [ -z "$xcodes_bin" ] || [ ! -x "$xcodes_bin" ]; then
+              echo "xcodes installation completed, but its executable could not be located." >&2
+              exit 2
+            fi
+
+            echo "Using xcodes installer:"
+            echo "  $xcodes_bin"
+            echo
+            "$xcodes_bin" install --latest
+
+            full_xcode="$(find_full_xcode || true)"
+            if [ -z "$full_xcode" ]; then
+              printf '%s\n' \
+                "xcodes returned successfully, but no full Xcode installation was found under /Applications." \
+                "Inspect 'xcodes installed', then rerun rh-zed-eval-bootstrap." >&2
+              exit 2
+            fi
+          fi
 
           if [ -z "''${DEVELOPER_DIR:-}" ] \
-            && [ -d "$default_xcode" ] \
+            && [ -n "$full_xcode" ] \
             && { [ -z "$active_developer_dir" ] \
               || [ "$active_developer_dir" = "/Library/Developer/CommandLineTools" ]; }
           then
-            export DEVELOPER_DIR="$default_xcode"
+            export DEVELOPER_DIR="$full_xcode"
             echo "Using full Xcode for the Zed eval-cli build:"
             echo "  $DEVELOPER_DIR"
             if [ -n "$active_developer_dir" ]; then
@@ -77,7 +172,7 @@
           if [ -z "$developer_dir" ]; then
             printf '%s\n' \
               "Xcode is required to build Zed eval-cli on macOS." \
-              "Install full Xcode, open it once, then rerun rh-zed-eval-bootstrap." >&2
+              "Rerun rh-zed-eval-bootstrap to install it automatically." >&2
             exit 2
           fi
 
@@ -87,9 +182,8 @@
               "  $developer_dir" \
               "" \
               "Zed's macOS build requires full Xcode because eval-cli links dependencies that compile Metal shaders." \
-              "Install/open Xcode.app, then rerun rh-zed-eval-bootstrap." \
-              "The bootstrap will use /Applications/Xcode.app/Contents/Developer automatically;" \
-              "you do not need to change the global xcode-select setting." >&2
+              "No full Xcode installation was detected under /Applications." \
+              "Rerun rh-zed-eval-bootstrap after resolving the Xcode installation." >&2
             exit 2
           fi
 
@@ -97,7 +191,7 @@
             printf '%s\n' \
               "The selected Xcode developer directory does not exist:" \
               "  $developer_dir" \
-              "Fix DEVELOPER_DIR or install/open Xcode.app, then retry." >&2
+              "Fix DEVELOPER_DIR or rerun rh-zed-eval-bootstrap to install Xcode automatically." >&2
             exit 2
           fi
 
@@ -125,11 +219,11 @@
               "  $developer_dir" \
               "" \
               "Finish Xcode setup, then retry:" \
-              "  sudo xcodebuild -runFirstLaunch" \
-              "  sudo xcodebuild -license accept" \
+              "  sudo env DEVELOPER_DIR='$developer_dir' xcodebuild -runFirstLaunch" \
+              "  sudo env DEVELOPER_DIR='$developer_dir' xcodebuild -license accept" \
               "" \
               "On macOS 26, if needed, also run:" \
-              "  xcodebuild -downloadComponent MetalToolchain" \
+              "  env DEVELOPER_DIR='$developer_dir' xcodebuild -downloadComponent MetalToolchain" \
               "" \
               "Then rerun:" \
               "  rh-zed-eval-bootstrap" >&2
