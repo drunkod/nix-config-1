@@ -34,6 +34,7 @@ let
 
   aiFullImports = aiCoreImports ++ [
     config.flake.modules.homeManager.repo-harness
+    config.flake.modules.homeManager.zed-eval-cli
     config.flake.modules.homeManager.archctx
     config.flake.modules.homeManager.repo-harness-mcp
     config.flake.modules.homeManager.repo-harness-mcp-quick
