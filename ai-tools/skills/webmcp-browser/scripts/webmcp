@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CDP_URL="${WEBMCP_CDP_URL:-http://127.0.0.1:9222}"
+
+pkg_json="$(find "$HOME/.npm/_npx" -path '*/node_modules/chrome-devtools-mcp/package.json' -print 2>/dev/null | head -1 || true)"
+if [[ -n "$pkg_json" ]]; then
+  pkg_dir="${pkg_json%/package.json}"
+  CLI=("$(command -v node)" "$pkg_dir/build/src/bin/chrome-devtools.js")
+else
+  CLI=(npx --yes --package=chrome-devtools-mcp@latest chrome-devtools)
+fi
+
+ensure_server() {
+  status="$("${CLI[@]}" status 2>/dev/null || true)"
+  if [[ "$status" != *"--browser-url=$CDP_URL"* || "$status" != *"--category-experimental-webmcp"* ]]; then
+    "${CLI[@]}" start \
+      --browserUrl="$CDP_URL" \
+      --categoryExperimentalWebmcp=true \
+      --usageStatistics=false \
+      --performanceCrux=false >/dev/null
+  fi
+}
+
+usage() {
+  cat <<'EOF'
+webmcp pages
+webmcp tools <pageId>
+webmcp call <pageId> <toolName> [json]
+webmcp status
+webmcp stop
+webmcp raw <chrome-devtools args...>
+EOF
+}
+cmd="${1:-}"
+case "$cmd" in
+  pages)
+    ensure_server
+    exec "${CLI[@]}" list_pages
+    ;;
+  tools)
+    [[ $# -ge 2 ]] || { usage; exit 2; }
+    ensure_server
+    exec "${CLI[@]}" list_webmcp_tools "$2"
+    ;;
+  call)
+    [[ $# -ge 3 ]] || { usage; exit 2; }
+    ensure_server
+    input="${4-}"
+    [[ -n "$input" ]] || input='{}'
+    exec "${CLI[@]}" execute_webmcp_tool "$2" "$3" --input "$input"
+    ;;
+  status)
+    exec "${CLI[@]}" status
+    ;;
+  stop)
+    exec "${CLI[@]}" stop
+    ;;
+  raw)
+    shift
+    ensure_server
+    exec "${CLI[@]}" "$@"
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac
