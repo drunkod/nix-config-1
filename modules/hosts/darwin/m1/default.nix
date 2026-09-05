@@ -19,6 +19,10 @@ let
     name = "MacBookAirM1Minimal";
   };
 
+  tunnelPkgs = import inputs.nixpkgs-tunnels {
+    system = minimalHost.system;
+  };
+
   aiCoreImports = with config.flake.modules.homeManager; [
     inputs.sops-nix.homeManagerModules.sops
     sops
@@ -139,12 +143,33 @@ in
 
   flake.modules.darwin.m1-min = {
     host = minimalHost;
+
+    # Tunnel clients used by Desktop Commander Remote testing. Keep them on a
+    # dedicated nixpkgs pin so their versions can advance independently of the
+    # rest of m1-min. Tailscale is supervised by nix-darwin.
+    services.tailscale = {
+      enable = true;
+      package = tunnelPkgs.tailscale;
+    };
+
     home-manager.users.${minimalHost.user.name} =
       { config, pkgs, ... }:
       {
         imports = aiFullImports;
 
-        home.packages = [ pkgs.gitingest ];
+        home.packages = [
+          pkgs.gitingest
+          tunnelPkgs.tailscale
+          tunnelPkgs.zrok
+        ];
+
+        # Desktop Commander tunnel adapters accept explicit binary paths.
+        # nixpkgs exposes the zrok v2 package as `zrok` and the executable is
+        # also named `zrok`, while Desktop Commander defaults to `zrok2`.
+        home.sessionVariables = {
+          TAILSCALE_BIN = "${tunnelPkgs.tailscale}/bin/tailscale";
+          ZROK_BIN = "${tunnelPkgs.zrok}/bin/zrok";
+        };
 
         services = {
           sops.enable = true;
