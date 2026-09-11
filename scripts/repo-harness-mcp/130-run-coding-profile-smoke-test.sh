@@ -40,7 +40,7 @@ require_port "$port"
 
 config_file="$HOME/.repo-harness/mcp.local.json"
 [ -f "$config_file" ] || die "MCP config is missing"
-jq -e '.scope == "user" and .profile == "coding" and .coding.enabled == true' \
+jq -e '.version == 3 and .profile == "coding" and .coding.enabled == true' \
   "$config_file" >/dev/null || die "coding profile is not enabled"
 
 MCP_HOST="$host" MCP_PORT="$port" \

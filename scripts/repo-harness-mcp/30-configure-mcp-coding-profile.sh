@@ -75,7 +75,7 @@ if [ "$dry_run" -eq 0 ]; then
   config_file="$HOME/.repo-harness/mcp.local.json"
   [ -f "$config_file" ] || die "expected config was not created: $config_file"
   jq -e '
-    .scope == "user"
+    .version == 3
     and .profile == "coding"
     and .coding.enabled == true
     and (.chatgpt.endpoint | endswith("/mcp"))

@@ -57,7 +57,7 @@
             exit 0
           fi
 
-          if ! jq -e '.scope == "user" and .profile == "coding" and .coding.enabled == true' \
+          if ! jq -e '.version == 3 and .profile == "coding" and .coding.enabled == true' \
             "$config_file" >/dev/null
           then
             echo "repo-harness MCP: local config is not an enabled coding profile" >&2
@@ -157,7 +157,7 @@
 
           config_file=${escapeShellArg userConfigFile}
           jq -e '
-            .scope == "user"
+            .version == 3
             and .profile == "coding"
             and .coding.enabled == true
             and (.chatgpt.endpoint | endswith("/mcp"))
