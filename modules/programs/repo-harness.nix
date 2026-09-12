@@ -6,23 +6,45 @@
       ...
     }:
     let
-      repoHarnessSource =
-        "git+https://github.com/drunkod/repo-harness.git#mvp";
+      # repo-harness 0.19.0 requires Bun >= 1.4.0 and Herdr >= 0.9.0. The
+      # current nixpkgs pins are older, so keep these two runtime dependencies
+      # explicit and reproducible until nixpkgs catches up.
+      repoHarnessBunSource = pkgs.fetchzip {
+        url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.0/bun-darwin-aarch64.zip";
+        hash = "sha256-rEW+fpUdE+0+hmCDww1M4+59TwoEhZRopOnSGNLAEPU=";
+        stripRoot = false;
+      };
+      repoHarnessBun = pkgs.runCommand "repo-harness-bun-1.4.0" { } ''
+        mkdir -p "$out/bin"
+        install -m 0755 "${repoHarnessBunSource}/bun-darwin-aarch64/bun" "$out/bin/bun"
+      '';
 
-      repoHarnessRuntimeInputs = with pkgs; [
-        bash
-        bun
-        coreutils
-        curl
-        findutils
-        git
-        jq
-        nodejs_24
+      repoHarnessHerdrSource = pkgs.fetchurl {
+        url = "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-macos-aarch64";
+        hash = "sha256-MrU98JhyYoBZx4mmnwKmuOKeFN3yZxFCHzRj9wwa7xc=";
+      };
+      repoHarnessHerdr = pkgs.runCommand "repo-harness-herdr-0.9.0" { } ''
+        mkdir -p "$out/bin"
+        install -m 0755 "${repoHarnessHerdrSource}" "$out/bin/herdr"
+      '';
+
+      repoHarnessSource =
+        "git+https://github.com/drunkod/repo-harness.git#main";
+
+      repoHarnessRuntimeInputs = [
+        pkgs.bash
+        repoHarnessBun
+        pkgs.coreutils
+        pkgs.curl
+        pkgs.findutils
+        pkgs.git
+        repoHarnessHerdr
+        pkgs.jq
+        pkgs.nodejs_24
       ];
 
-      # Bun 1.3.13 can report DependencyLoop when replacing an existing npm
-      # global package with a Git source of the same package name. Remove the
-      # registered global dependency first, then install the selected branch.
+      # Remove the registered global dependency first so switching Git sources
+      # remains deterministic across Bun versions and prior installations.
       repoHarnessInstall = ''
         global_manifest="$BUN_INSTALL/install/global/package.json"
 
@@ -191,7 +213,8 @@
     {
       home = {
         packages = [
-          pkgs.bun
+          repoHarnessBun
+          repoHarnessHerdr
           pkgs.jq
           pkgs.nodejs_24
           repoHarnessLauncher

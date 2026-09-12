@@ -50,7 +50,12 @@ scripts and non-interactive shells.
 
 Repo Harness is not a flake input and is not recorded in `flake.lock`.
 Therefore, `nix flake update` does not update the CLI. The source configured in
-`modules/programs/repo-harness.nix` is the moving upstream `mvp` branch.
+`modules/programs/repo-harness.nix` is the fork's adopted `main` branch.
+
+Repo Harness 0.19.0 requires Bun 1.4.0 or newer and Herdr 0.9.0 or newer. The
+module currently pins the validated macOS arm64 Bun 1.4.0 and Herdr 0.9.0
+release assets directly because the repository's current nixpkgs revisions are
+older than those runtime floors.
 
 Refresh the CLI explicitly, then verify the installed version:
 
@@ -64,8 +69,9 @@ rh-check
 `repo-harness-bootstrap`. Use the long command in scripts and non-interactive
 shells.
 
-A Nix rebuild is only needed after changing the Nix-managed launcher, services,
-helpers, or source URL. Updating normal flake inputs remains a separate action:
+A Nix rebuild is needed after changing the Nix-managed runtime pins, launcher,
+services, helpers, or source URL. Updating normal flake inputs remains a separate
+action:
 
 ```bash
 nix flake update             # update every declared input
