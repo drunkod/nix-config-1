@@ -18,6 +18,8 @@ sudo darwin-rebuild switch --flake .#m1-min
 exec zsh
 repo-harness-bootstrap
 repo-harness --version
+repo-harness-sync-host-config
+sudo darwin-rebuild switch --flake .#m1-min
 ```
 
 The short interactive alias is `rh-bootstrap`.
@@ -28,6 +30,7 @@ The short interactive alias is `rh-bootstrap`.
 |---|---|
 | `repo-harness-bootstrap` | Install or refresh the CLI |
 | `repo-harness-generate-host-config` | Inspect upstream host projections in an isolated temporary home |
+| `repo-harness-sync-host-config` | Sync the current Repo Harness Codex hook projection into Nix |
 | `repo-harness-init-current` | Preview initialization of the current repository |
 | `repo-harness-check` | Run the host/setup audit |
 | `repo-harness-mcp-quick-restart` | Start/replace Coding MCP and Quick Tunnel |
@@ -62,6 +65,8 @@ Refresh the CLI explicitly, then verify the installed version:
 ```bash
 rh-bootstrap
 repo-harness --version
+rh-sync-host-config
+sudo darwin-rebuild switch --flake .#m1-min
 rh-check
 ```
 
@@ -69,9 +74,52 @@ rh-check
 `repo-harness-bootstrap`. Use the long command in scripts and non-interactive
 shells.
 
+## Sync Repo Harness hooks into Nix
+
+The Codex host adapter is **global, not project-local**. Do not run the upstream
+host installer inside every repository and do not add project-local
+`.codex/hooks.json` files.
+
+After installing or upgrading Repo Harness, refresh the Nix-owned projection once:
+
+```bash
+cd ~/nix-config
+rh-sync-host-config
+rh-sync-host-config --check
+sudo darwin-rebuild switch --flake .#m1-min
+```
+
+`rh-sync-host-config` runs the current Repo Harness installer against an isolated
+temporary HOME, validates the generated Codex adapter, and copies only the reviewed
+hook projection to `modules/programs/repo-harness/codex-hooks.json`. It never writes
+directly to the real `~/.codex` directory.
+
+`modules/programs/codex.nix` remains the source of truth for the real
+`~/.codex/config.toml` and `~/.codex/hooks.json` Home Manager links. If a future
+Repo Harness version generates new TOML requirements, the sync helper fails closed
+and asks for an explicit Nix change instead of silently widening the host config.
+
+After activation, restart Codex, accept any hook-trust prompt, and verify:
+
+```bash
+repo-harness setup check --target codex --json
+```
+
+A new project needs only repo-local adoption:
+
+```bash
+cd /path/to/project
+repo-harness init
+repo-harness run check-task-workflow --strict
+```
+
+The global hook adapter discovers the current Git root at runtime and applies the
+Repo Harness workflow only to adopted repositories, so no host-hook copy step is
+needed per project.
+
 A Nix rebuild is needed after changing the Nix-managed runtime pins, launcher,
-services, helpers, or source URL. Updating normal flake inputs remains a separate
-action:
+services, helpers, source URL, or generated host projection. Updating normal flake
+inputs remains a separate action:
 
 ```bash
 nix flake update             # update every declared input

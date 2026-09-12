@@ -103,7 +103,10 @@
           "$BUN_INSTALL/bin/repo-harness" --version
 
           echo
-          echo "Host config was not changed. To inspect generated host adapters safely, run:"
+          echo "Host config was not changed directly."
+          echo "Sync the current Codex adapter projection into Nix with:"
+          echo "  rh-sync-host-config"
+          echo "Inspect the full upstream host projection with:"
           echo "  rh-generate-host-config"
 
           echo
@@ -169,6 +172,111 @@
         '';
       };
 
+      repoHarnessSyncHostConfig = pkgs.writeShellApplication {
+        name = "repo-harness-sync-host-config";
+        runtimeInputs = repoHarnessRuntimeInputs;
+        text = ''
+          set -euo pipefail
+
+          export BUN_INSTALL="''${BUN_INSTALL:-$HOME/.bun}"
+          cli="$BUN_INSTALL/bin/repo-harness"
+          nix_config_root="''${REPO_HARNESS_NIX_CONFIG_ROOT:-$HOME/nix-config}"
+          mode=apply
+
+          while [ "$#" -gt 0 ]; do
+            case "$1" in
+              --check)
+                mode=check
+                shift
+                ;;
+              --nix-config)
+                [ "$#" -ge 2 ] || { echo "--nix-config requires a path" >&2; exit 2; }
+                nix_config_root="$2"
+                shift 2
+                ;;
+              -h|--help)
+                cat <<'EOF'
+Usage: repo-harness-sync-host-config [--check] [--nix-config <path>]
+
+Generate the current Repo Harness Codex host adapter in an isolated HOME and
+sync its hooks projection into the Nix configuration. The real ~/.codex files
+are never mutated by this command.
+EOF
+                exit 0
+                ;;
+              *)
+                echo "unknown argument: $1" >&2
+                exit 2
+                ;;
+            esac
+          done
+
+          [ -x "$cli" ] || { echo "repo-harness CLI is not installed; run rh-bootstrap first" >&2; exit 127; }
+          [ -d "$nix_config_root/.git" ] || { echo "Nix config repo not found: $nix_config_root" >&2; exit 1; }
+
+          target_dir="$nix_config_root/modules/programs/repo-harness"
+          target="$target_dir/codex-hooks.json"
+          codex_module="$nix_config_root/modules/programs/codex.nix"
+          workdir="$(mktemp -d "''${TMPDIR:-/tmp}/repo-harness-host-sync.XXXXXX")"
+          trap 'rm -rf "$workdir"' EXIT
+          generated_home="$workdir/home"
+          mkdir -p "$generated_home"
+
+          HOME="$generated_home" \
+          XDG_CONFIG_HOME="$generated_home/.config" \
+          XDG_STATE_HOME="$generated_home/.local/state" \
+          XDG_CACHE_HOME="$generated_home/.cache" \
+            "$cli" install --target codex --location global >/dev/null
+
+          generated_hooks="$generated_home/.codex/hooks.json"
+          generated_config="$generated_home/.codex/config.toml"
+
+          jq -e '
+            (.hooks | type == "object")
+            and ([.hooks[]?[]? | .hooks[]? | select(.command | contains("repo-harness-managed-hook-v1"))] | length > 0)
+          ' "$generated_hooks" >/dev/null
+
+          config_payload="$(grep -Ev '^[[:space:]]*(#|$)' "$generated_config")"
+          if [ "$config_payload" != "default_mode_request_user_input = true" ]; then
+            echo "Repo Harness generated unexpected Codex config requirements:" >&2
+            cat "$generated_config" >&2
+            echo "Review and port them into modules/programs/codex.nix before syncing hooks." >&2
+            exit 1
+          fi
+
+          grep -Fq 'default_mode_request_user_input = true;' "$codex_module" || {
+            echo "modules/programs/codex.nix is missing default_mode_request_user_input = true" >&2
+            exit 1
+          }
+
+          if [ -f "$target" ] && cmp -s "$generated_hooks" "$target"; then
+            echo "Repo Harness Codex host projection is current."
+            exit 0
+          fi
+
+          if [ "$mode" = check ]; then
+            echo "Repo Harness Codex host projection is stale or missing: $target" >&2
+            echo "Run: rh-sync-host-config" >&2
+            exit 1
+          fi
+
+          mkdir -p "$target_dir"
+          tmp_target="$target.tmp.$$"
+          cp "$generated_hooks" "$tmp_target"
+          mv "$tmp_target" "$target"
+
+          echo "Updated Repo Harness Codex host projection:"
+          echo "  $target"
+          echo
+          echo "Review and activate it with:"
+          echo "  cd '$nix_config_root'"
+          echo "  git diff -- modules/programs/codex.nix modules/programs/repo-harness.nix modules/programs/repo-harness/codex-hooks.json"
+          echo "  sudo darwin-rebuild switch --flake .#m1-min"
+          echo
+          echo "Then restart Codex and accept any new hook trust prompt."
+        '';
+      };
+
       repoHarnessInitCurrent = pkgs.writeShellApplication {
         name = "repo-harness-init-current";
         runtimeInputs = repoHarnessRuntimeInputs;
@@ -220,6 +328,7 @@
           repoHarnessLauncher
           repoHarnessBootstrap
           repoHarnessGenerateHostConfig
+          repoHarnessSyncHostConfig
           repoHarnessInitCurrent
           repoHarnessCheck
         ];
@@ -231,6 +340,7 @@
         shellAliases = {
           rh-bootstrap = "repo-harness-bootstrap";
           rh-generate-host-config = "repo-harness-generate-host-config";
+          rh-sync-host-config = "repo-harness-sync-host-config";
           rh-init = "repo-harness-init-current";
           rh-check = "repo-harness-check";
         };

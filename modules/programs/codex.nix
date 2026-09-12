@@ -59,6 +59,11 @@
 
         file = {
           ".codex/config.toml".source = settingsFormat.generate "codex-config.toml" {
+            # Repo Harness owns this host-level Codex capability. Keep it in the
+            # Nix-owned config rather than letting the mutable upstream installer
+            # edit ~/.codex/config.toml directly.
+            default_mode_request_user_input = true;
+
             features = {
               apps = true;
               fast_mode = true;
@@ -197,6 +202,11 @@
                 }) trustedProjects
               );
           };
+
+          # Generated from the currently installed Repo Harness runtime by
+          # `rh-sync-host-config`; Home Manager remains the sole owner of the
+          # real user-level Codex adapter.
+          ".codex/hooks.json".source = ./repo-harness/codex-hooks.json;
 
           ".codex/AGENTS.md".source = aiTools.base;
 
