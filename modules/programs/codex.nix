@@ -11,6 +11,27 @@
       settingsFormat = pkgs.formats.toml { };
       exoEnabled = false; # Set to true if you run a local exo cluster service
       codexPackage = pkgs.llm-agents.codex;
+      wazaProjection = builtins.fromJSON (
+        builtins.readFile ./repo-harness/waza-source.json
+      );
+      wazaRepoParts = lib.splitString "/" wazaProjection.source_repo;
+      wazaSource = pkgs.fetchFromGitHub {
+        owner = builtins.elemAt wazaRepoParts 0;
+        repo = builtins.elemAt wazaRepoParts 1;
+        rev = wazaProjection.rev;
+        hash = wazaProjection.hash;
+      };
+      wazaSkills = wazaProjection.managed_skills;
+      wazaSharedRules = wazaProjection.shared_rules;
+      codexSkills = pkgs.runCommand "codex-skills-with-waza" { } ''
+        mkdir -p "$out"
+        cp -R ${aiTools.codex.skills}/. "$out/"
+        chmod -R u+w "$out"
+        for skill in ${lib.concatStringsSep " " wazaSkills}; do
+          rm -rf "$out/$skill"
+          cp -R "${wazaSource}/skills/$skill" "$out/$skill"
+        done
+      '';
       trustedWorkspaceRoot = "${config.home.homeDirectory}/Documents/work";
       repoHarnessHookTrust = builtins.fromJSON (
         builtins.readFile ./repo-harness/codex-hook-trust.json
@@ -89,7 +110,8 @@
           codex-exo-qwen = ''codex -c model_provider='"exo"' -m mlx-community/Qwen3.6-35B-A3B-5bit'';
         };
 
-        file = {
+        file =
+          {
           ".codex/config.toml".source = settingsFormat.generate "codex-config.toml" {
             # Repo Harness owns this host-level Codex capability. Keep it in the
             # Nix-owned config rather than letting the mutable upstream installer
@@ -257,10 +279,43 @@
 
           ".codex/AGENTS.md".source = aiTools.base;
 
-          ".codex/skills".source = aiTools.codex.skills;
+          # Codex runtime skills are Nix-owned, but the parent directory must
+          # stay writable because Codex 0.154+ materializes its own system-skill
+          # metadata there. Recursive projection links managed files below the
+          # directory instead of replacing ~/.codex/skills with a store symlink.
+          ".codex/skills" = {
+            source = codexSkills;
+            recursive = true;
+          };
 
-          ".codex/rules/read-only.md".text = builtins.readFile ./codex-rules.txt;
-        };
+            ".codex/rules/read-only.md".text = builtins.readFile ./codex-rules.txt;
+          }
+          // builtins.listToAttrs (
+            map (rule: {
+              name = ".codex/rules/${rule}";
+              value.source = "${wazaSource}/rules/${rule}";
+            }) wazaSharedRules
+          );
       };
+
+      # Older generations projected ~/.codex/skills as one store-backed symlink.
+      # Codex 0.154+ writes its own system-skill metadata under that directory, so
+      # migrate only the Home-Manager-owned parent link to a writable directory
+      # before recursive child links are installed.
+      home.activation.codexSkillsWritableRoot = lib.hm.dag.entryBetween
+        [ "linkGeneration" ]
+        [ "writeBoundary" ]
+        ''
+          skills_root="$HOME/.codex/skills"
+          if [ -L "$skills_root" ]; then
+            target="$(readlink "$skills_root" || true)"
+            case "$target" in
+              /nix/store/*-home-manager-files/.codex/skills)
+                run rm "$skills_root"
+                run mkdir -p "$skills_root"
+                ;;
+            esac
+          fi
+        '';
     };
 }

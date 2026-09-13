@@ -407,6 +407,155 @@ PYPROBE
         '';
       };
 
+      repoHarnessSyncWaza = pkgs.writeShellApplication {
+        name = "repo-harness-sync-waza";
+        runtimeInputs = repoHarnessRuntimeInputs ++ [ pkgs.nix ];
+        text = ''
+          set -euo pipefail
+
+          export BUN_INSTALL="''${BUN_INSTALL:-$HOME/.bun}"
+          cli="$BUN_INSTALL/bin/repo-harness"
+          nix_config_root="''${REPO_HARNESS_NIX_CONFIG_ROOT:-$HOME/nix-config}"
+          mode=apply
+
+          while [ "$#" -gt 0 ]; do
+            case "$1" in
+              --check)
+                mode=check
+                shift
+                ;;
+              --nix-config)
+                [ "$#" -ge 2 ] || { echo "--nix-config requires a path" >&2; exit 2; }
+                nix_config_root="$2"
+                shift 2
+                ;;
+              -h|--help)
+                cat <<'EOF'
+Usage: repo-harness-sync-waza [--check] [--nix-config <path>]
+
+Read the Waza contract from the installed Repo Harness runtime, resolve the
+current upstream Waza revision, prefetch it through Nix, validate every managed
+skill/shared-rule path, and sync the immutable projection metadata into
+nix-config. The real ~/.agents and ~/.codex trees are never mutated.
+EOF
+                exit 0
+                ;;
+              *)
+                echo "unknown argument: $1" >&2
+                exit 2
+                ;;
+            esac
+          done
+
+          [ -x "$cli" ] || { echo "repo-harness CLI is not installed; run rh-bootstrap first" >&2; exit 127; }
+          git -C "$nix_config_root" rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+            echo "Nix config Git worktree not found: $nix_config_root" >&2
+            exit 1
+          }
+
+          target="$nix_config_root/modules/programs/repo-harness/waza-source.json"
+          workdir="$(mktemp -d "''${TMPDIR:-/tmp}/repo-harness-waza-sync.XXXXXX")"
+          trap 'rm -rf "$workdir"' EXIT
+          probe_repo="$workdir/probe-repo"
+          report="$workdir/agent-tooling.json"
+          mkdir -p "$probe_repo"
+          git -C "$probe_repo" init -q
+
+          (
+            cd "$probe_repo"
+            "$cli" run check-agent-tooling -- --json --host codex > "$report" || true
+          )
+
+          jq -e '
+            (.tools.waza.source_repo | type == "string" and test("^[^/]+/[^/]+$"))
+            and (.tools.waza.source_url | type == "string" and startswith("https://github.com/"))
+            and (.tools.waza.primary_host == "codex")
+            and (.tools.waza.managed_skills | type == "array" and length > 0 and all(.[]; type == "string" and length > 0))
+            and (.tools.waza.shared_rules | type == "array" and length > 0 and all(.[]; type == "string" and length > 0))
+          ' "$report" >/dev/null
+
+          source_repo="$(jq -r '.tools.waza.source_repo' "$report")"
+          source_url="$(jq -r '.tools.waza.source_url' "$report")"
+          primary_host="$(jq -r '.tools.waza.primary_host' "$report")"
+          managed_skills="$(jq -c '.tools.waza.managed_skills' "$report")"
+          shared_rules="$(jq -c '.tools.waza.shared_rules' "$report")"
+
+          rev="$(git ls-remote "$source_url" HEAD | head -n 1 | cut -f 1)"
+          printf '%s' "$rev" | grep -Eq '^[0-9a-f]{40}$' || {
+            echo "Unable to resolve an immutable Waza HEAD from $source_url" >&2
+            exit 1
+          }
+
+          archive_url="''${source_url%.git}/archive/$rev.tar.gz"
+          prefetch_output="$(nix-prefetch-url --unpack --print-path "$archive_url")"
+          nix_hash="$(printf '%s\n' "$prefetch_output" | head -n 1)"
+          source_path="$(printf '%s\n' "$prefetch_output" | tail -n 1)"
+          sri_hash="$(nix hash to-sri --type sha256 "$nix_hash")"
+
+          while IFS= read -r skill; do
+            [ -f "$source_path/skills/$skill/SKILL.md" ] || {
+              echo "Repo Harness declares missing Waza skill at revision $rev: skills/$skill/SKILL.md" >&2
+              exit 1
+            }
+          done < <(printf '%s' "$managed_skills" | jq -r '.[]')
+
+          while IFS= read -r rule; do
+            [ -f "$source_path/rules/$rule" ] || {
+              echo "Repo Harness declares missing Waza shared rule at revision $rev: rules/$rule" >&2
+              exit 1
+            }
+          done < <(printf '%s' "$shared_rules" | jq -r '.[]')
+
+          generated="$workdir/waza-source.json"
+          jq -n \
+            --arg source_repo "$source_repo" \
+            --arg source_url "$source_url" \
+            --arg primary_host "$primary_host" \
+            --arg rev "$rev" \
+            --arg hash "$sri_hash" \
+            --argjson managed_skills "$managed_skills" \
+            --argjson shared_rules "$shared_rules" \
+            '{
+              protocol: 1,
+              source_repo: $source_repo,
+              source_url: $source_url,
+              primary_host: $primary_host,
+              rev: $rev,
+              hash: $hash,
+              managed_skills: $managed_skills,
+              shared_rules: $shared_rules
+            }' > "$generated"
+
+          if [ -f "$target" ] && cmp -s "$generated" "$target"; then
+            echo "Repo Harness Waza Nix projection is current: $target"
+            echo "  revision: $rev"
+            exit 0
+          fi
+
+          if [ "$mode" = check ]; then
+            echo "Repo Harness Waza Nix projection is stale or missing: $target" >&2
+            echo "  upstream revision: $rev" >&2
+            echo "Run: rh-sync-waza" >&2
+            exit 1
+          fi
+
+          mkdir -p "$(dirname "$target")"
+          tmp_target="$target.tmp.$$"
+          cp "$generated" "$tmp_target"
+          mv "$tmp_target" "$target"
+
+          echo "Updated Repo Harness Waza Nix projection:"
+          echo "  $target"
+          echo "  revision: $rev"
+          echo "  hash: $sri_hash"
+          echo
+          echo "Review and activate it with:"
+          echo "  cd '$nix_config_root'"
+          echo "  git diff -- modules/programs/codex.nix modules/programs/repo-harness.nix modules/programs/repo-harness/waza-source.json REPO-HARNESS.md"
+          echo "  sudo darwin-rebuild switch --flake .#m1-min"
+        '';
+      };
+
       repoHarnessInitCurrent = pkgs.writeShellApplication {
         name = "repo-harness-init-current";
         runtimeInputs = repoHarnessRuntimeInputs;
@@ -459,6 +608,7 @@ PYPROBE
           repoHarnessBootstrap
           repoHarnessGenerateHostConfig
           repoHarnessSyncHostConfig
+          repoHarnessSyncWaza
           repoHarnessInitCurrent
           repoHarnessCheck
         ];
@@ -471,6 +621,7 @@ PYPROBE
           rh-bootstrap = "repo-harness-bootstrap";
           rh-generate-host-config = "repo-harness-generate-host-config";
           rh-sync-host-config = "repo-harness-sync-host-config";
+          rh-sync-waza = "repo-harness-sync-waza";
           rh-init = "repo-harness-init-current";
           rh-check = "repo-harness-check";
         };

@@ -1,0 +1,20 @@
+{
+  "protocol": 1,
+  "source_repo": "tw93/Waza",
+  "source_url": "https://github.com/tw93/Waza.git",
+  "primary_host": "codex",
+  "rev": "ba60df6efd4ff9a8332e939c6027f156440d2eb8",
+  "hash": "sha256-/WH5lXnL3b18pgCLHrkBJUaUH3mdLpjakV4lwpiNFsg=",
+  "managed_skills": [
+    "think",
+    "hunt",
+    "check",
+    "health"
+  ],
+  "shared_rules": [
+    "anti-patterns.md",
+    "chinese.md",
+    "durable-context.md",
+    "english.md"
+  ]
+}

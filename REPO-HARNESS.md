@@ -66,6 +66,7 @@ Refresh the CLI explicitly, then verify the installed version:
 rh-bootstrap
 repo-harness --version
 rh-sync-host-config
+rh-sync-waza
 sudo darwin-rebuild switch --flake .#m1-min
 rh-check
 ```
@@ -110,6 +111,53 @@ Repo Harness version generates new TOML requirements, the sync helper fails clos
 and asks for an explicit Nix change instead of silently widening the host config.
 The generated `[hooks.state]` entries also mean Codex does not need to persist hook
 approval into the immutable Nix-store `config.toml`.
+
+## Sync Repo Harness Waza into Nix
+
+Waza is a **host capability**, not project-local setup. New repositories should not
+run `bunx skills add tw93/Waza` or otherwise mutate `~/.codex/skills`. After a
+Repo Harness upgrade, refresh the Nix-owned Waza projection once:
+
+```bash
+cd ~/nix-config
+rh-sync-waza
+rh-sync-waza --check
+sudo darwin-rebuild switch --flake .#m1-min
+```
+
+`rh-sync-waza` asks the installed Repo Harness runtime for its Codex Waza contract
+(source repository, managed skills, shared rules, and primary host) from a blank
+temporary Git repository. It resolves upstream Waza `HEAD` to an immutable commit,
+prefetches that exact archive through Nix, validates every Repo Harness-declared
+skill and rule path, and atomically writes only
+`modules/programs/repo-harness/waza-source.json`. The real `~/.agents` and
+`~/.codex` trees are never modified by the sync helper. `rh-sync-waza --check` is
+read-only and fails when Repo Harness changes its Waza contract or upstream Waza
+has moved beyond the pinned projection.
+
+`modules/programs/codex.nix` consumes the generated revision, fixed-output hash,
+managed-skill list, and shared-rule list. Home Manager recursively projects the
+managed skill files under a normal writable `~/.codex/skills` directory instead
+of making the parent directory a Nix-store symlink. This is required by Codex
+0.154+, which materializes its own system-skill metadata in that parent directory.
+A guarded activation migration removes the old parent symlink only when it points
+to a Home-Manager-owned `*-home-manager-files/.codex/skills` store path.
+
+The normal host refresh after upgrading Repo Harness is therefore:
+
+```bash
+rh-bootstrap
+rh-sync-host-config
+rh-sync-waza
+rh-sync-host-config --check
+rh-sync-waza --check
+sudo darwin-rebuild switch --flake .#m1-min
+repo-harness setup check --target codex --json
+```
+
+After that switch, every new Repo Harness project reuses the same global Waza
+`think`, `hunt`, `check`, and `health` skills. Project adoption remains repo-local;
+Waza installation does not repeat per repository.
 
 Codex project trust is exact-path rather than inherited from a parent directory.
 The Nix-managed `codex` launcher therefore resolves the current Git root and injects
