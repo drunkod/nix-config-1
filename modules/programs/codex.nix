@@ -10,6 +10,38 @@
       aiTools = import ../../ai-tools { inherit lib; };
       settingsFormat = pkgs.formats.toml { };
       exoEnabled = false; # Set to true if you run a local exo cluster service
+      codexPackage = pkgs.llm-agents.codex;
+      trustedWorkspaceRoot = "${config.home.homeDirectory}/Documents/work";
+      repoHarnessHookTrust = builtins.fromJSON (
+        builtins.readFile ./repo-harness/codex-hook-trust.json
+      );
+      codexLauncher = pkgs.writeShellApplication {
+        name = "codex";
+        runtimeInputs = [
+          pkgs.git
+          pkgs.jq
+        ];
+        text = ''
+          set -euo pipefail
+
+          codex_bin=${lib.escapeShellArg (lib.getExe codexPackage)}
+          trusted_root=${lib.escapeShellArg trustedWorkspaceRoot}
+          project_root=""
+
+          if root="$(${lib.getExe pkgs.git} rev-parse --show-toplevel 2>/dev/null)"; then
+            case "$root/" in
+              "$trusted_root/"*) project_root="$root" ;;
+            esac
+          fi
+
+          if [ -n "$project_root" ]; then
+            quoted_root="$(printf '%s' "$project_root" | ${lib.getExe pkgs.jq} -Rs '.')"
+            exec "$codex_bin" -c "projects.$quoted_root.trust_level=\"trusted\"" "$@"
+          fi
+
+          exec "$codex_bin" "$@"
+        '';
+      };
       codexNotify = pkgs.writeShellApplication {
         name = "codex-notify";
         runtimeInputs = [
@@ -37,7 +69,7 @@
     {
       home = {
         packages = [
-          pkgs.llm-agents.codex
+          codexLauncher
           pkgs.jq
         ];
 
@@ -86,12 +118,21 @@
               max_bytes = 104857600;
             };
 
-            model = "gpt-5.5";
+            # Codex persists hook approvals in config.toml, which is immutable on
+            # this Home Manager host. Generate the trusted hashes from Codex's own
+            # hooks/list API and project them declaratively instead.
+            hooks.state = lib.mapAttrs' (selector: trustedHash:
+              lib.nameValuePair
+                "${config.home.homeDirectory}/.codex/hooks.json:${selector}"
+                { trusted_hash = trustedHash; }
+            ) repoHarnessHookTrust;
+
+            model = "gpt-5.6-luna";
             model_auto_compact_token_limit = 240000;
             model_context_window = 272000;
             model_reasoning_effort = "medium";
             plan_mode_reasoning_effort = "medium";
-            service_tier = "fast";
+            service_tier = "priority";
             model_providers = lib.optionalAttrs exoEnabled {
               exo = {
                 name = "exo (local cluster)";
@@ -151,13 +192,14 @@
                 web_search = "disabled";
               };
 
+              # Faster implementation loop for routine coding tasks.
               quick = {
-                model = "gpt-5.3-codex-spark";
                 model_reasoning_effort = "medium";
+                model = "gpt-5.6-luna";
                 model_reasoning_summary = "none";
                 model_verbosity = "low";
                 plan_mode_reasoning_effort = "medium";
-                service_tier = "fast";
+                service_tier = "priority";
                 web_search = "disabled";
               };
 
@@ -184,8 +226,13 @@
 
             projects =
               let
+                # Codex project trust is exact-path, not inherited. The CLI
+                # launcher below supplies exact trust dynamically for Git roots
+                # under Documents/work; keep explicit entries for non-wrapper
+                # clients that open these known repositories directly.
                 trustedProjects = [
                   "Documents/work"
+                  "Documents/work/browser-extension-chat-jazz"
                   "Documents/work/fcast-android-sender"
                   "Documents/work/omnigent"
                 ];

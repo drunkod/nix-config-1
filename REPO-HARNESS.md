@@ -90,32 +90,54 @@ sudo darwin-rebuild switch --flake .#m1-min
 ```
 
 `rh-sync-host-config` runs the current Repo Harness installer against an isolated
-temporary HOME, validates the generated Codex adapter, and copies only the reviewed
-hook projection to `modules/programs/repo-harness/codex-hooks.json`. It never writes
-directly to the real `~/.codex` directory.
+temporary HOME, validates the generated Codex adapter, and copies the reviewed hook
+projection to `modules/programs/repo-harness/codex-hooks.json`. It then builds/resolves
+the Codex candidate from the current `m1-min` flake, keeps that candidate rooted with
+a temporary Nix out-link for the duration of the probe, and asks its app-server for the
+authoritative `hooks/list` keys and `currentHash` values. If no Nix candidate can be
+resolved it falls back to the active `codex` on `PATH`. The 12 Repo Harness trust
+hashes are written to `modules/programs/repo-harness/codex-hook-trust.json`; the
+helper never writes directly to the real `~/.codex` directory.
+
+Run this sync after either a Repo Harness upgrade **or a Codex upgrade**. Because the
+Nix candidate is preferred, hook-hash drift is detected before the new generation is
+activated. `rh-sync-host-config --check` fails when either generated projection is
+stale.
 
 `modules/programs/codex.nix` remains the source of truth for the real
 `~/.codex/config.toml` and `~/.codex/hooks.json` Home Manager links. If a future
 Repo Harness version generates new TOML requirements, the sync helper fails closed
 and asks for an explicit Nix change instead of silently widening the host config.
+The generated `[hooks.state]` entries also mean Codex does not need to persist hook
+approval into the immutable Nix-store `config.toml`.
 
-After activation, restart Codex, accept any hook-trust prompt, and verify:
+Codex project trust is exact-path rather than inherited from a parent directory.
+The Nix-managed `codex` launcher therefore resolves the current Git root and injects
+an exact transient `trust_level = "trusted"` override only when that root is inside
+`~/Documents/work`, which is the workspace already designated as trusted on this
+machine. Repositories outside that boundary still use normal Codex trust handling.
+Known repositories may also remain as explicit project entries for clients that
+bypass the shell launcher.
+
+After activation, restart Codex and verify without accepting or persisting any new
+Repo Harness hook trust manually:
 
 ```bash
 repo-harness setup check --target codex --json
 ```
 
-A new project needs only repo-local adoption:
+A new project under `~/Documents/work` needs only repo-local adoption:
 
 ```bash
-cd /path/to/project
+cd ~/Documents/work/new-project
 repo-harness init
 repo-harness run check-task-workflow --strict
+codex
 ```
 
 The global hook adapter discovers the current Git root at runtime and applies the
-Repo Harness workflow only to adopted repositories, so no host-hook copy step is
-needed per project.
+Repo Harness workflow only to adopted repositories, so no host-hook copy or trust
+write is needed per project.
 
 A Nix rebuild is needed after changing the Nix-managed runtime pins, launcher,
 services, helpers, source URL, or generated host projection. Updating normal flake

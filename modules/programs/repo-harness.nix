@@ -174,7 +174,7 @@
 
       repoHarnessSyncHostConfig = pkgs.writeShellApplication {
         name = "repo-harness-sync-host-config";
-        runtimeInputs = repoHarnessRuntimeInputs;
+        runtimeInputs = repoHarnessRuntimeInputs ++ [ pkgs.python3 ];
         text = ''
           set -euo pipefail
 
@@ -216,6 +216,7 @@ EOF
 
           target_dir="$nix_config_root/modules/programs/repo-harness"
           target="$target_dir/codex-hooks.json"
+          trust_target="$target_dir/codex-hook-trust.json"
           codex_module="$nix_config_root/modules/programs/codex.nix"
           workdir="$(mktemp -d "''${TMPDIR:-/tmp}/repo-harness-host-sync.XXXXXX")"
           trap 'rm -rf "$workdir"' EXIT
@@ -249,31 +250,160 @@ EOF
             exit 1
           }
 
-          if [ -f "$target" ] && cmp -s "$generated_hooks" "$target"; then
-            echo "Repo Harness Codex host projection is current."
+          codex_bin=""
+          codex_source=""
+          if command -v nix >/dev/null 2>&1 && [ -f "$nix_config_root/flake.nix" ]; then
+            candidate_link="$workdir/codex-candidate"
+            if (
+              cd "$nix_config_root"
+              nix build --out-link "$candidate_link" \
+                .#darwinConfigurations.m1-min.pkgs.llm-agents.codex >/dev/null 2>&1
+            ); then
+              candidate_out="$(readlink "$candidate_link" 2>/dev/null || true)"
+              if [ -n "$candidate_out" ] && [ -x "$candidate_out/bin/codex" ]; then
+                codex_bin="$candidate_out/bin/codex"
+                codex_source="Nix candidate"
+              fi
+            fi
+          fi
+          if [ -z "$codex_bin" ]; then
+            codex_bin="$(command -v codex || true)"
+            codex_source="active PATH"
+          fi
+          [ -n "$codex_bin" ] || { echo "Codex CLI is required to derive hook trust hashes" >&2; exit 127; }
+          echo "Deriving Codex hook trust from $codex_source: $codex_bin"
+          probe_repo="$workdir/probe-repo"
+          mkdir -p "$probe_repo"
+          git -C "$probe_repo" init -q
+          generated_trust="$workdir/codex-hook-trust.json"
+
+          CODEX_HOME="$generated_home/.codex" python3 - "$codex_bin" "$probe_repo" <<'PYPROBE' > "$generated_trust"
+import json
+import os
+import select
+import subprocess
+import sys
+import time
+
+codex_bin, probe_repo = sys.argv[1:3]
+process = subprocess.Popen(
+    [
+        codex_bin,
+        "-c",
+        f'projects.{json.dumps(probe_repo)}.trust_level="trusted"',
+        "app-server",
+        "--stdio",
+    ],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    bufsize=1,
+    env=os.environ.copy(),
+)
+
+def send(payload):
+    process.stdin.write(json.dumps(payload, separators=(",", ":")) + "\n")
+    process.stdin.flush()
+
+def wait_for(request_id, timeout=15):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        readable, _, _ = select.select([process.stdout, process.stderr], [], [], 0.25)
+        for stream in readable:
+            line = stream.readline()
+            if not line:
+                continue
+            if stream is process.stderr:
+                continue
+            try:
+                message = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if message.get("id") == request_id:
+                if "error" in message:
+                    raise RuntimeError(message["error"])
+                return message
+    raise TimeoutError(f"Codex app-server request {request_id} timed out")
+
+send({
+    "method": "initialize",
+    "id": 1,
+    "params": {
+        "clientInfo": {
+            "name": "repo_harness_nix_sync",
+            "title": "Repo Harness Nix Sync",
+            "version": "1",
+        }
+    },
+})
+wait_for(1)
+send({"method": "initialized", "params": {}})
+send({"method": "hooks/list", "id": 2, "params": {"cwds": [probe_repo]}})
+response = wait_for(2)
+
+trust = {}
+for result in response["result"]["data"]:
+    for hook in result["hooks"]:
+        command = hook.get("command") or ""
+        if "repo-harness-managed-hook-v1" not in command:
+            continue
+        source = hook.get("sourcePath") or ""
+        key = hook["key"]
+        prefix = source + ":"
+        if not key.startswith(prefix):
+            raise RuntimeError(f"unexpected hook key/source binding: {key} / {source}")
+        selector = key[len(prefix):]
+        trust[selector] = hook["currentHash"]
+
+if len(trust) != 12:
+    raise RuntimeError(f"expected 12 Repo Harness Codex hooks, found {len(trust)}")
+
+print(json.dumps(dict(sorted(trust.items())), indent=2))
+process.terminate()
+try:
+    process.wait(timeout=5)
+except subprocess.TimeoutExpired:
+    process.kill()
+PYPROBE
+
+          jq -e 'length == 12 and all(.[]; test("^sha256:[0-9a-f]{64}$"))' "$generated_trust" >/dev/null
+
+          hooks_current=false
+          trust_current=false
+          [ -f "$target" ] && cmp -s "$generated_hooks" "$target" && hooks_current=true
+          [ -f "$trust_target" ] && cmp -s "$generated_trust" "$trust_target" && trust_current=true
+
+          if [ "$hooks_current" = true ] && [ "$trust_current" = true ]; then
+            echo "Repo Harness Codex host projection and trust hashes are current."
             exit 0
           fi
 
           if [ "$mode" = check ]; then
-            echo "Repo Harness Codex host projection is stale or missing: $target" >&2
+            [ "$hooks_current" = true ] || echo "Repo Harness Codex hook projection is stale or missing: $target" >&2
+            [ "$trust_current" = true ] || echo "Repo Harness Codex hook trust projection is stale or missing: $trust_target" >&2
             echo "Run: rh-sync-host-config" >&2
             exit 1
           fi
 
           mkdir -p "$target_dir"
           tmp_target="$target.tmp.$$"
+          tmp_trust_target="$trust_target.tmp.$$"
           cp "$generated_hooks" "$tmp_target"
+          cp "$generated_trust" "$tmp_trust_target"
           mv "$tmp_target" "$target"
+          mv "$tmp_trust_target" "$trust_target"
 
-          echo "Updated Repo Harness Codex host projection:"
+          echo "Updated Repo Harness Codex host projections:"
           echo "  $target"
+          echo "  $trust_target"
           echo
           echo "Review and activate it with:"
           echo "  cd '$nix_config_root'"
-          echo "  git diff -- modules/programs/codex.nix modules/programs/repo-harness.nix modules/programs/repo-harness/codex-hooks.json"
+          echo "  git diff -- modules/programs/codex.nix modules/programs/repo-harness.nix modules/programs/repo-harness/codex-hooks.json modules/programs/repo-harness/codex-hook-trust.json"
           echo "  sudo darwin-rebuild switch --flake .#m1-min"
           echo
-          echo "Then restart Codex and accept any new hook trust prompt."
+          echo "Then restart Codex. Project trust and Repo Harness hook trust are Nix-managed."
         '';
       };
 
