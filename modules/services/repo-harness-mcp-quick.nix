@@ -20,7 +20,7 @@
       mcpCfg = config.services.repo-harness-mcp;
       localUrlHost = if mcpCfg.host == "::1" then "[::1]" else mcpCfg.host;
       localOrigin = "http://${localUrlHost}:${toString mcpCfg.port}";
-      runtimePath = "${config.home.homeDirectory}/.bun/bin:${config.home.profileDirectory}/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+      runtimePath = "${config.home.profileDirectory}/bin:/usr/bin:/bin:/usr/sbin:/sbin";
       stateDirectory = cfg.stateDirectory;
       logFile = "${stateDirectory}/cloudflared.log";
       urlFile = "${stateDirectory}/public-url";

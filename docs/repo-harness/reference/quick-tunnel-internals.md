@@ -249,7 +249,7 @@ repo-harness-mcp-bootstrap \
   --endpoint "$QUICK_URL/mcp"
 
 launchctl setenv PATH \
-  "$HOME/.bun/bin:/etc/profiles/per-user/test/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  "/etc/profiles/per-user/test/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 repo-harness-mcp-restart
 sleep 3
