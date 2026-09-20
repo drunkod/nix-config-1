@@ -137,9 +137,10 @@ repo-harness chatgpt browser-create-readback \
   --dry-run
 ```
 
-Review the generated request, then repeat without `--dry-run`. The compatibility
-alias `browser-create-verify` remains available in `0.15.0`. Review actual GitHub
-branch, commit, diff, draft PR, and CI evidence. Merge remains a human decision.
+Review the generated request, then repeat without `--dry-run`. The pinned 0.19.0
+CLI also exposes `browser-create-verify` as a compatibility alias for
+`browser-create-readback`. Review actual GitHub branch, commit, diff, draft PR,
+and CI evidence. Merge remains a human decision.
 
 ## Safety boundaries
 

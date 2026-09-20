@@ -1,14 +1,16 @@
 # Repo Harness on `m1-min`
 
-This repository installs Repo Harness in two stages:
-
-1. Nix/Home Manager owns Bun, helper commands, services, tunnels, and agent
-   integration.
-2. `repo-harness-bootstrap` installs or refreshes the mutable Repo Harness CLI
-   under `~/.bun/bin`.
+Nix/Home Manager owns the production Repo Harness entry points, the pinned
+Bun/Herdr runtimes, services, tunnels, Codex integration, and the exact Repo
+Harness source revision. `repo-harness-bootstrap` materializes that pinned
+package payload under `~/.local/share/repo-harness/<40-char-revision>/`, while
+normal CLI and hook execution goes through the Nix profile launchers with
+explicit Bun paths. The legacy `~/.bun/bin` directory is not part of the managed
+execution path or session PATH.
 
 Do not run the upstream host installer over Nix-managed Claude, Codex, or editor
-configuration.
+configuration. Do not switch the tracked runtime back to a moving Git branch for
+ordinary operation.
 
 ## Install or refresh
 
@@ -33,8 +35,14 @@ The short interactive alias is `rh-bootstrap`.
 | `repo-harness-sync-host-config` | Sync the current Repo Harness Codex hook projection into Nix |
 | `repo-harness-init-current` | Preview initialization of the current repository |
 | `repo-harness-check` | Run the host/setup audit |
+| `repo-harness-protected-runtime-smoke` | Run protected-closeout authority/integration checks plus the pinned upstream journal regression |
 | `repo-harness-mcp-quick-restart` | Start/replace Coding MCP and Quick Tunnel |
 | `repo-harness-mcp-quick-test` | Run the end-to-end readiness check |
+
+The protected-runtime smoke is a regression/integration check, not proof of a
+live production Sprint publication. It verifies the negative protected Sprint
+authority path, exercises a disposable positive protected closeout integration,
+and runs the pinned upstream closeout-journal regression.
 
 Interactive Zsh also exposes shorter `rh-*` aliases. Use canonical long names in
 scripts and non-interactive shells.
@@ -52,26 +60,57 @@ scripts and non-interactive shells.
 ## Update Repo Harness
 
 Repo Harness is not a flake input and is not recorded in `flake.lock`.
-Therefore, `nix flake update` does not update the CLI. The source configured in
-`modules/programs/repo-harness.nix` is the fork's adopted `main` branch.
+Therefore, `nix flake update` does not update it. The exact tested fork commit
+is declared by `modules/programs/repo-harness/runtime-source.json` and consumed
+by `modules/programs/repo-harness.nix`.
+
+Changing that pin does **not** upgrade the already-active `rh-*` helpers: those
+commands were built by the current generation and still embed its revision.
+Build the candidate generation first and invoke its helpers directly from the
+candidate per-user profile. This avoids revision-skew failures while the new
+projection is being prepared.
 
 Repo Harness 0.19.0 requires Bun 1.4.0 or newer and Herdr 0.9.0 or newer. The
-module currently pins the validated macOS arm64 Bun 1.4.0 and Herdr 0.9.0
-release assets directly because the repository's current nixpkgs revisions are
-older than those runtime floors.
+module pins the corresponding upstream release assets for supported Darwin and
+Linux architectures because the repository's current nixpkgs revisions are
+older than those runtime floors. Unsupported platforms fail evaluation rather
+than receiving a binary for the wrong OS or architecture.
 
-Refresh the CLI explicitly, then verify the installed version:
+For a runtime-pin upgrade, use candidate tools before activation:
 
 ```bash
-rh-bootstrap
-repo-harness --version
-rh-sync-host-config
-rh-sync-waza
+cd ~/nix-config
+
+candidate="$(nix build --no-link --print-out-paths .#darwinConfigurations.m1-min.system)"
+candidate_bin="$candidate/etc/profiles/per-user/$(id -un)/bin"
+
+"$candidate_bin/repo-harness-bootstrap"
+"$candidate_bin/repo-harness-sync-host-config" --nix-config "$PWD"
+"$candidate_bin/repo-harness-sync-waza" --nix-config "$PWD"
+"$candidate_bin/repo-harness-sync-host-config" --check --nix-config "$PWD"
+"$candidate_bin/repo-harness-sync-waza" --check --nix-config "$PWD"
+"$candidate_bin/repo-harness-protected-runtime-smoke"
+
+# Projection sync may have changed the checkout. Validate the final candidate.
+nix build --no-link \
+  .#checks.aarch64-darwin.repo-harness-projection-schema \
+  .#checks.aarch64-darwin.repo-harness-m1-min-projection \
+  .#checks.aarch64-darwin.repo-harness-mcp-scripts \
+  .#darwinConfigurations.m1-min.system
+
 sudo darwin-rebuild switch --flake .#m1-min
+exec zsh
+repo-harness --version
 rh-check
 ```
 
-`rh-bootstrap` is the interactive Zsh alias for
+The first `nix build` only produces a candidate closure; it does not activate
+the host. The revision-addressed payload under `~/.local/share/repo-harness`
+also remains ordinary user-owned filesystem content outside the Nix store.
+Bootstrap treats a published revision as append-only and refuses to repair it
+in place, but Nix itself does not make that directory immutable.
+
+For the currently active pin, `rh-bootstrap` remains the interactive alias for
 `repo-harness-bootstrap`. Use the long command in scripts and non-interactive
 shells.
 
@@ -81,7 +120,8 @@ The Codex host adapter is **global, not project-local**. Do not run the upstream
 host installer inside every repository and do not add project-local
 `.codex/hooks.json` files.
 
-After installing or upgrading Repo Harness, refresh the Nix-owned projection once:
+When the runtime pin is unchanged—for example, after a Codex upgrade or while
+checking projection drift—the active helper can refresh the Nix-owned projection:
 
 ```bash
 cd ~/nix-config
@@ -90,20 +130,28 @@ rh-sync-host-config --check
 sudo darwin-rebuild switch --flake .#m1-min
 ```
 
+After a **Repo Harness runtime-pin change**, use the candidate helper from
+[Update Repo Harness](#update-repo-harness) instead. The active helper embeds the
+old runtime revision and is expected to reject a checkout with a different pin.
+
 `rh-sync-host-config` runs the current Repo Harness installer against an isolated
 temporary HOME, validates the generated Codex adapter, and copies the reviewed hook
-projection to `modules/programs/repo-harness/codex-hooks.json`. It then builds/resolves
-the Codex candidate from the current `m1-min` flake, keeps that candidate rooted with
-a temporary Nix out-link for the duration of the probe, and asks its app-server for the
-authoritative `hooks/list` keys and `currentHash` values. If no Nix candidate can be
-resolved it falls back to the active `codex` on `PATH`. The 12 Repo Harness trust
-hashes are written to `modules/programs/repo-harness/codex-hook-trust.json`; the
-helper never writes directly to the real `~/.codex` directory.
+projection into the single compatibility artifact
+`modules/programs/repo-harness/codex-projection.json`. It rewrites managed hook
+dispatch to the Nix-owned Repo Harness launchers, builds the Codex candidate from
+the current `m1-min` flake, keeps that candidate rooted with a temporary Nix
+out-link for the duration of the probe, and asks its app-server for the
+authoritative `hooks/list` keys and `currentHash` values. Promotion fails if
+that Codex candidate cannot be resolved; ambient-PATH fallback is available only
+through an explicit diagnostic flag. Hook text, all 12 trust hashes, Repo Harness
+revision, source, and Codex executable are updated atomically in one JSON file.
+The helper never writes directly to the real `~/.codex` directory.
 
-Run this sync after either a Repo Harness upgrade **or a Codex upgrade**. Because the
-Nix candidate is preferred, hook-hash drift is detected before the new generation is
-activated. `rh-sync-host-config --check` fails when either generated projection is
-stale.
+Run the active helper after a Codex upgrade or for projection maintenance when
+the Repo Harness runtime pin is unchanged. After a Repo Harness runtime-pin
+upgrade, run the candidate helper described above. In either case, the sync
+derives trust from the checkout's Nix Codex candidate before activation.
+`rh-sync-host-config --check` fails when the generated projection is stale.
 
 `modules/programs/codex.nix` remains the source of truth for the real
 `~/.codex/config.toml` and `~/.codex/hooks.json` Home Manager links. If a future
@@ -115,8 +163,8 @@ approval into the immutable Nix-store `config.toml`.
 ## Sync Repo Harness Waza into Nix
 
 Waza is a **host capability**, not project-local setup. New repositories should not
-run `bunx skills add tw93/Waza` or otherwise mutate `~/.codex/skills`. After a
-Repo Harness upgrade, refresh the Nix-owned Waza projection once:
+run `bunx skills add tw93/Waza` or otherwise mutate `~/.codex/skills`. With the
+runtime pin unchanged, refresh or validate the Nix-owned Waza projection with:
 
 ```bash
 cd ~/nix-config
@@ -125,15 +173,19 @@ rh-sync-waza --check
 sudo darwin-rebuild switch --flake .#m1-min
 ```
 
-`rh-sync-waza` asks the installed Repo Harness runtime for its Codex Waza contract
-(source repository, managed skills, shared rules, and primary host) from a blank
-temporary Git repository. It resolves upstream Waza `HEAD` to an immutable commit,
-prefetches that exact archive through Nix, validates every Repo Harness-declared
-skill and rule path, and atomically writes only
-`modules/programs/repo-harness/waza-source.json`. The real `~/.agents` and
-`~/.codex` trees are never modified by the sync helper. `rh-sync-waza --check` is
-read-only and fails when Repo Harness changes its Waza contract or upstream Waza
-has moved beyond the pinned projection.
+After a Repo Harness runtime-pin change, use the candidate `repo-harness-sync-waza`
+from [Update Repo Harness](#update-repo-harness) before activation.
+
+`rh-sync-waza` asks the pinned Repo Harness runtime for its Codex Waza
+contract (source repository, managed skills, shared rules, and primary host) from
+a blank temporary Git repository. The default update mode resolves upstream Waza
+`HEAD`, prefetches that archive through Nix, validates every declared path, and
+atomically writes `modules/programs/repo-harness/waza-source.json` together with
+the Repo Harness revision that declared the contract. `rh-sync-waza --check` is
+deterministic and validates the committed pin against the pinned runtime without
+consulting upstream HEAD. Use `rh-sync-waza --update-check` for online update
+discovery. The real `~/.agents` and `~/.codex` trees are never modified by the
+sync helper.
 
 `modules/programs/codex.nix` consumes the generated revision, fixed-output hash,
 managed-skill list, and shared-rule list. Home Manager recursively projects the
@@ -143,15 +195,17 @@ of making the parent directory a Nix-store symlink. This is required by Codex
 A guarded activation migration removes the old parent symlink only when it points
 to a Home-Manager-owned `*-home-manager-files/.codex/skills` store path.
 
-The normal host refresh after upgrading Repo Harness is therefore:
+After a runtime-pin change, use the candidate-helper sequence in
+[Update Repo Harness](#update-repo-harness). Do not substitute the currently
+active `rh-sync-*` commands before activation: their compiled runtime revision
+may intentionally differ from the checkout and the skew guard will reject that
+combination.
+
+After activation, verify the active generation normally:
 
 ```bash
-rh-bootstrap
-rh-sync-host-config
-rh-sync-waza
 rh-sync-host-config --check
 rh-sync-waza --check
-sudo darwin-rebuild switch --flake .#m1-min
 repo-harness setup check --target codex --json
 ```
 

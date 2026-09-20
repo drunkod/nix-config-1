@@ -14,7 +14,7 @@ shared [`safety rules`](safety.md), then choose one current procedure.
 | Publish MCP temporarily | [Quick Tunnel](quick/tunnels.md#quick-tunnel-default) | [Guide 3](guides/03-start-coding-mcp-quick-tunnel.md) |
 | Use a stable Cloudflare hostname | [Named Tunnel](quick/tunnels.md#named-tunnel-optional) | [Tunnel internals](reference/quick-tunnel-internals.md) |
 | Solve a daily development task | [Developer recipes](../developer-recipes/README.md) | Recipe-specific |
-| Discover every installed 0.15 CLI surface | [CLI toolbox](quick/cli-toolbox.md) | Installed `--help` and bundled docs |
+| Inspect legacy 0.15 command mappings | [Historical CLI toolbox](quick/cli-toolbox.md) | Installed pinned CLI `--help` is authoritative |
 
 Quick tutorials are abbreviated. The numbered guides own current setup and
 operational sequencing. References explain internals and uncommon variants.
@@ -41,19 +41,32 @@ when adoption is already committed.
 
 ## Update the CLI
 
-Repo Harness is installed from the moving upstream `mvp` Git branch through
-Bun; it is not a declared flake input. `nix flake update` does not update it.
-Refresh and verify it explicitly:
+Repo Harness is installed from an exact tested fork revision declared in
+`modules/programs/repo-harness/runtime-source.json`; it is not a flake input.
+`nix flake update` does not update it.
+
+If the runtime pin itself changes, do not start the upgrade with the currently
+active `rh-bootstrap` or `rh-sync-*` commands. Those helpers belong to the
+active generation and embed its revision. Build the new Darwin candidate, run
+the candidate's per-user Repo Harness helpers, validate the resulting checkout,
+and only then activate it. The complete command sequence is in the top-level
+[Repo Harness host guide](../../REPO-HARNESS.md#update-repo-harness).
+
+For repair or verification of the **currently active pin**, the normal aliases
+remain valid:
 
 ```bash
 rh-bootstrap
 repo-harness --version
+rh-sync-host-config --check
+rh-sync-waza --check
+rh-smoke
 rh-check
 ```
 
-Use `repo-harness-bootstrap` instead of the `rh-bootstrap` alias in scripts and
-non-interactive shells. See the top-level [Repo Harness host guide](../../REPO-HARNESS.md#update-repo-harness)
-for the distinction between CLI, Nix configuration, and flake-input updates.
+A successful `nix build` is candidate validation, not host activation. The
+revision-addressed runtime directory is outside the Nix store and is protected
+by bootstrap's no-in-place-mutation policy rather than Nix-store immutability.
 
 ## Canonical guides
 
@@ -69,8 +82,8 @@ for the distinction between CLI, Nix configuration, and flake-input updates.
 - [Coding MCP](quick/coding.md)
 - [Browser Engine and GitHub Create/Review](quick/browser-engine.md)
 - [Quick and named tunnels](quick/tunnels.md)
-- [Workflow concepts for installed `0.15.0`](quick/workflow-concepts.md)
-- [Repo Harness 0.15 CLI toolbox](quick/cli-toolbox.md)
+- [Historical 0.15 workflow concepts](quick/workflow-concepts.md)
+- [Historical 0.15 CLI toolbox](quick/cli-toolbox.md)
 
 ## Specialist references
 
@@ -84,9 +97,10 @@ for the distinction between CLI, Nix configuration, and flake-input updates.
 
 ## Version boundary
 
-The public website may use a different command surface from installed Repo Harness
-`0.15.0`. The complete mapping belongs in
-[workflow concepts](quick/workflow-concepts.md). Confirm availability with:
+The public website and historical 0.15 guides may use a different command
+surface from the pinned Repo Harness 0.19.0 runtime. Treat the historical
+workflow/CLI pages as migration context only. Confirm the current command surface
+with:
 
 ```bash
 repo-harness --help

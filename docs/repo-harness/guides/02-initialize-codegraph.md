@@ -141,7 +141,7 @@ Every Git worktree needs its own `.codegraph/` index. An index created in:
 is not copied into a Repo Harness managed worktree because `.codegraph/` is
 ignored local state.
 
-With installed Repo Harness `0.15.0`:
+With the current managed-worktree workflow:
 
 - `open_workspace` creates a managed Git worktree but does not initialize,
   copy, or sync CodeGraph;

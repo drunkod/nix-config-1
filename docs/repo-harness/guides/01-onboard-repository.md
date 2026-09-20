@@ -15,10 +15,14 @@ CodeGraph only after adoption by continuing to guide 2.
 | `drunkod/repo-harness` | Repo Harness CLI, repository contract, MCP protocol, workspace and security behavior |
 | `drunkod/nix-config-1` | Installation and operation on this Mac: launchd, loopback port, Quick Tunnel, OAuth helper, aliases |
 
-The current authority for this guide is the installed `repo-harness 0.15.0`
-package. `rh-bootstrap` installs the moving upstream `mvp` branch, so
-`repo-harness --version` confirms the package version but not an exact source
-commit. Re-run the onboarding previews and MCP checks after refreshing the CLI.
+The current authority for this guide is Repo Harness `0.19.0` pinned by
+`modules/programs/repo-harness/runtime-source.json` to exact fork commit
+`3d0ada93d2d370627b12907a84b2b567ba3c8751`. The active generation's
+`rh-bootstrap` installs its own pinned revision into a revision-addressed
+runtime directory; `repo-harness --version` confirms the semantic version while
+the runtime pin and lock provide exact source identity. After changing the pin in
+the checkout, use the candidate-helper upgrade sequence in the top-level
+`REPO-HARNESS.md` rather than the stale active helper.
 
 ## Terminology that must not be mixed
 
@@ -43,7 +47,7 @@ repo-harness --version
 repo-harness-mcp-health
 ```
 
-If the CLI is missing or stale:
+If the CLI payload is missing or stale for the **currently active generation**:
 
 ```bash
 rh-bootstrap

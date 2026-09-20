@@ -7,7 +7,7 @@ common failures, and understand what it may and may not do.
 
 | Layer | Owner | Durable state |
 |---|---|---|
-| Repo Harness CLI and protocol | `drunkod/repo-harness` | mutable Bun install under `~/.bun` |
+| Repo Harness CLI and protocol | `drunkod/repo-harness` | exact Nix pin plus revision-addressed payload under `~/.local/share/repo-harness/<revision>` |
 | `m1-min` service and helpers | `drunkod/nix-config-1` | Nix/Home Manager and launchd |
 | Repository adoption | each target repository | committed `.ai/harness` / task scaffolding |
 | Repository access and OAuth | local user | `~/.repo-harness` — never commit |
@@ -136,10 +136,10 @@ Access/profile changes advance the authorization revision. Restart the service,
 refresh the ChatGPT app schema, and reauthorize. Old OAuth authorization failing
 after a revision change is expected fail-closed behavior.
 
-Repo Harness `0.15.0` does not expose a delete command for registry entries.
-Do not hand-edit `registered-repos.json` or its authorization revision. Downgrade
-unused entries to `read_only`; fix removal support upstream if deletion is
-required.
+Do not infer registry-removal support from historical releases. Check the
+current pinned CLI with `repo-harness mcp --help`. If no supported removal
+operation exists, downgrade unused entries to `read_only`; never hand-edit
+`registered-repos.json` or its authorization revision.
 
 ## Security model
 
@@ -294,9 +294,9 @@ repo-harness architecture-projection status --json
 repo-harness architecture-projection drain --json
 ```
 
-In `0.15.0`, failed or unavailable projection remains pending for retry. Stop,
-normal drain, and manual drain share the frozen changed set. Do not manually
-acknowledge failed architecture work as clean.
+Failed or unavailable projection remains pending for retry. Stop, normal drain,
+and manual drain share the frozen changed set. Do not manually acknowledge
+failed architecture work as clean.
 
 ### Setup, update, or doctor exits nonzero
 

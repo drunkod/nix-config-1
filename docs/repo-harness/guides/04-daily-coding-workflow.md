@@ -139,7 +139,7 @@ Before allowing edits, inspect the returned:
 The remote tool intentionally does not reveal the local managed-worktree path.
 Do not ask ChatGPT to discover that path through shell commands.
 
-With `0.15.0`, the workspace should also appear in:
+The workspace should also appear in:
 
 ```bash
 repo-harness mcp workspaces list --json

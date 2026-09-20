@@ -25,9 +25,11 @@ only when you want a stable custom hostname.
 
 ## Source authority
 
-The current runtime authority is installed `repo-harness 0.15.0`. Bootstrap
-tracks the moving upstream `mvp` branch, so the reported package version does
-not identify an exact source commit.
+The current runtime authority is Repo Harness `0.19.0` pinned by
+`modules/programs/repo-harness.nix` to exact fork commit
+`3d0ada93d2d370627b12907a84b2b567ba3c8751`. The Nix launcher verifies the
+revision-addressed runtime lock before invoking the package; the semantic
+version alone is not used as source identity.
 
 ## What Nix owns
 
@@ -201,10 +203,11 @@ OAuth protected-resource    HTTP 200
 ```
 
 The test used an alternate port and did not touch the PR checkout. Config and
-OAuth token files were restored afterward. Repo Harness `0.15.0` exposes
-`mcp access set` but no registry-delete command, so deleting the disposable worktree can
-leave an unusable path entry in `registered-repos.json`; do not hand-edit the
-registry or its authorization revision to remove it.
+OAuth token files were restored afterward. This canary was originally recorded
+against Repo Harness `0.15.0`; treat its registry-delete limitation as historical
+evidence, not a statement about the current pinned CLI. For current cleanup
+capabilities, inspect `repo-harness mcp --help`; never hand-edit
+`registered-repos.json` or its authorization revision.
 
 ### Adopted `m1-min` checkout and public transport
 
