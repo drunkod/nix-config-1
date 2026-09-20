@@ -11,9 +11,7 @@
       settingsFormat = pkgs.formats.toml { };
       exoEnabled = false; # Set to true if you run a local exo cluster service
       codexPackage = pkgs.llm-agents.codex;
-      wazaProjection = builtins.fromJSON (
-        builtins.readFile ./repo-harness/waza-source.json
-      );
+      wazaProjection = builtins.fromJSON (builtins.readFile ./repo-harness/waza-source.json);
       wazaRepoParts = lib.splitString "/" wazaProjection.source_repo;
       wazaSource = pkgs.fetchFromGitHub {
         owner = builtins.elemAt wazaRepoParts 0;
@@ -33,8 +31,12 @@
         done
       '';
       trustedWorkspaceRoot = "${config.home.homeDirectory}/Documents/work";
-      repoHarnessHookTrust = builtins.fromJSON (
-        builtins.readFile ./repo-harness/codex-hook-trust.json
+      repoHarnessCodexProjection = builtins.fromJSON (
+        builtins.readFile ./repo-harness/codex-projection.json
+      );
+      repoHarnessHookTrust = repoHarnessCodexProjection.trust;
+      repoHarnessHooks = pkgs.writeText "repo-harness-codex-hooks.json" (
+        builtins.toJSON repoHarnessCodexProjection.hooks
       );
       codexLauncher = pkgs.writeShellApplication {
         name = "codex";
@@ -110,8 +112,7 @@
           codex-exo-qwen = ''codex -c model_provider='"exo"' -m mlx-community/Qwen3.6-35B-A3B-5bit'';
         };
 
-        file =
-          {
+        file = {
           ".codex/config.toml".source = settingsFormat.generate "codex-config.toml" {
             # Repo Harness owns this host-level Codex capability. Keep it in the
             # Nix-owned config rather than letting the mutable upstream installer
@@ -143,17 +144,18 @@
             # Codex persists hook approvals in config.toml, which is immutable on
             # this Home Manager host. Generate the trusted hashes from Codex's own
             # hooks/list API and project them declaratively instead.
-            hooks.state = lib.mapAttrs' (selector: trustedHash:
-              lib.nameValuePair
-                "${config.home.homeDirectory}/.codex/hooks.json:${selector}"
-                { trusted_hash = trustedHash; }
+            hooks.state = lib.mapAttrs' (
+              selector: trustedHash:
+              lib.nameValuePair "${config.home.homeDirectory}/.codex/hooks.json:${selector}" {
+                trusted_hash = trustedHash;
+              }
             ) repoHarnessHookTrust;
 
             model = "gpt-5.6-luna";
             model_auto_compact_token_limit = 240000;
             model_context_window = 272000;
-            model_reasoning_effort = "medium";
-            plan_mode_reasoning_effort = "medium";
+            model_reasoning_effort = "low";
+            plan_mode_reasoning_effort = "low";
             service_tier = "priority";
             model_providers = lib.optionalAttrs exoEnabled {
               exo = {
@@ -169,17 +171,20 @@
             notify = [ (lib.getExe codexNotify) ];
             personality = "pragmatic";
             approval_policy = "on-request";
-            sandbox_mode = "danger-full-access";
+            sandbox_mode = "workspace-write";
 
-            mcp_servers = if (config.programs.mcp.enable or false) then (
-              lib.mapAttrs (name: server:
-                lib.filterAttrs (n: v: v != null && v != [] && v != {}) {
-                  command = server.command;
-                  args = server.args or [];
-                  env = server.env or {};
-                }
-              ) config.programs.mcp.servers
-            ) else {};
+            mcp_servers =
+              if (config.programs.mcp.enable or false) then
+                (lib.mapAttrs (
+                  name: server:
+                  lib.filterAttrs (n: v: v != null && v != [ ] && v != { }) {
+                    command = server.command;
+                    args = server.args or [ ];
+                    env = server.env or { };
+                  }
+                ) config.programs.mcp.servers)
+              else
+                { };
 
             project_root_markers = [
               ".git"
@@ -235,6 +240,7 @@
               };
 
               offline = {
+                sandbox_mode = "workspace-write";
                 sandbox_workspace_write.network_access = false;
                 web_search = "disabled";
               };
@@ -275,7 +281,7 @@
           # Generated from the currently installed Repo Harness runtime by
           # `rh-sync-host-config`; Home Manager remains the sole owner of the
           # real user-level Codex adapter.
-          ".codex/hooks.json".source = ./repo-harness/codex-hooks.json;
+          ".codex/hooks.json".source = repoHarnessHooks;
 
           ".codex/AGENTS.md".source = aiTools.base;
 
@@ -288,34 +294,33 @@
             recursive = true;
           };
 
-            ".codex/rules/read-only.md".text = builtins.readFile ./codex-rules.txt;
-          }
-          // builtins.listToAttrs (
-            map (rule: {
-              name = ".codex/rules/${rule}";
-              value.source = "${wazaSource}/rules/${rule}";
-            }) wazaSharedRules
-          );
+          ".codex/rules/read-only.md".text = builtins.readFile ./codex-rules.txt;
+        }
+        // builtins.listToAttrs (
+          map (rule: {
+            name = ".codex/rules/${rule}";
+            value.source = "${wazaSource}/rules/${rule}";
+          }) wazaSharedRules
+        );
       };
 
       # Older generations projected ~/.codex/skills as one store-backed symlink.
       # Codex 0.154+ writes its own system-skill metadata under that directory, so
       # migrate only the Home-Manager-owned parent link to a writable directory
       # before recursive child links are installed.
-      home.activation.codexSkillsWritableRoot = lib.hm.dag.entryBetween
-        [ "linkGeneration" ]
-        [ "writeBoundary" ]
-        ''
-          skills_root="$HOME/.codex/skills"
-          if [ -L "$skills_root" ]; then
-            target="$(readlink "$skills_root" || true)"
-            case "$target" in
-              /nix/store/*-home-manager-files/.codex/skills)
-                run rm "$skills_root"
-                run mkdir -p "$skills_root"
-                ;;
-            esac
-          fi
-        '';
+      home.activation.codexSkillsWritableRoot =
+        lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ]
+          ''
+            skills_root="$HOME/.codex/skills"
+            if [ -L "$skills_root" ]; then
+              target="$(readlink "$skills_root" || true)"
+              case "$target" in
+                /nix/store/*-home-manager-files/.codex/skills)
+                  run rm "$skills_root"
+                  run mkdir -p "$skills_root"
+                  ;;
+              esac
+            fi
+          '';
     };
 }

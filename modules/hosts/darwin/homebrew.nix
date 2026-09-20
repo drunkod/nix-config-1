@@ -14,13 +14,10 @@
         onActivation = {
           autoUpdate = false;
           upgrade = false;
-          # TODO: switch back to `cleanup = "zap"` once nix-darwin emits
-          # `--cleanup --zap` instead of the removed `--force-cleanup` flag.
+          # Ordinary rebuilds must never remove manually installed formulae,
+          # casks, preferences, or application data.
           cleanup = "none";
-          extraFlags = [
-            "--cleanup"
-            "--zap"
-          ];
+          extraFlags = [ ];
         };
         casks = [
           # "appcleaner"
@@ -116,10 +113,17 @@
         "steipete/tap"
       ];
       brews = [
+        "colima"
+        "docker"
+        "docker-buildx"
+        "docker-compose"
+        "lima"
         "steipete/tap/oracle"
       ];
       casks = [
         "firefox"
+        # Preserve Talon and its user data across ordinary rebuilds.
+        "talon"
         # "raycast"
         "visual-studio-code"
       ];

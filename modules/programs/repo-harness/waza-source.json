@@ -1,5 +1,6 @@
 {
   "protocol": 1,
+  "repo_harness_revision": "3d0ada93d2d370627b12907a84b2b567ba3c8751",
   "source_repo": "tw93/Waza",
   "source_url": "https://github.com/tw93/Waza.git",
   "primary_host": "codex",

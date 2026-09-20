@@ -66,6 +66,18 @@
             };
           };
 
+          touchpoint = {
+            command = "/Users/test/.local/share/touchpoint/venv/bin/touchpoint-mcp";
+            args = [ ];
+            env = {
+              TOUCHPOINT_MODE = "no-vision";
+              TOUCHPOINT_CDP_DISCOVER = "false";
+              TOUCHPOINT_CDP_APP = "Helium";
+              TOUCHPOINT_CDP_PORT = "9222";
+              TOUCHPOINT_AX_MESSAGING_TIMEOUT = "1";
+            };
+          };
+
           codewebchat = {
             command = mkMcpScript "codewebchat-mcp-wrapper" ''
               repo="/Users/test/Documents/work/CodeWebChat"

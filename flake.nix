@@ -60,7 +60,7 @@
     # ProxyPilot fork with native t3.chat support.
     # Recommended for this private repo: SSH URL so Nix can authenticate via your GitHub SSH key.
     pp-t3 = {
-      url = "git+ssh://git@github.com/drunkod/pp-t3.git?ref=t3go";
+      url = "git+ssh://git@github.com/drunkod/pp-t3.git?ref=fix/t3chat-tool-emulation";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -123,7 +123,14 @@
               ;
           };
 
-          checks = import ./checks/repo-harness-mcp.nix { inherit pkgs; };
+          checks = import ./checks/repo-harness-mcp.nix {
+            inherit pkgs;
+            targetHomePackages =
+              if system == "aarch64-darwin" then
+                inputs.self.darwinConfigurations.m1-min.config.home-manager.users.test.home.packages
+              else
+                null;
+          };
         };
     };
 }

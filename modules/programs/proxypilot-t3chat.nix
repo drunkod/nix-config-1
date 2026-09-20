@@ -49,10 +49,24 @@
       configYaml = pkgs.writeText "proxypilot-t3chat-config.yaml" ''
         host: "127.0.0.1"
         port: 8317
+        request-log: false
         auth-dir: "${config.home.homeDirectory}/.cli-proxy-api"
         api-keys:
           - "${localApiKey}"
         debug: false
+        t3chat:
+          tool-emulation:
+            enabled: true
+            prompt-format: compact-v2
+            max-tool-prompt-bytes: 200000
+            max-translated-request-bytes: 600000
+            models:
+              gpt-5.6-luna:
+                tools: emulated
+                max-tool-prompt-bytes: 200000
+                max-translated-request-bytes: 600000
+              gpt-5.6-sol:
+                tools: disabled
       '';
 
       t3chatImport = pkgs.writeShellApplication {

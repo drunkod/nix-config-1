@@ -47,6 +47,7 @@ let
     # Keep the named-tunnel module available as an opt-in stable-domain path.
     config.flake.modules.homeManager.cloudflared-mcp-tunnel
     config.flake.modules.homeManager.codex
+    config.flake.modules.homeManager.t3code
     config.flake.modules.homeManager."pi-coding-agent"
     config.flake.modules.homeManager.jules
     config.flake.modules.homeManager."qoder-cli"
