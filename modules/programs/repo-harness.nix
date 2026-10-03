@@ -1027,24 +1027,24 @@
           cli=${lib.escapeShellArg (lib.getExe repoHarnessLauncher)}
           projection=${lib.escapeShellArg ./repo-harness/codex-projection.json}
           waza_projection=${lib.escapeShellArg ./repo-harness/waza-source.json}
-          expected_revision=${lib.escapeShellArg repoHarnessRevision}
           ${repoHarnessAssertInstalled}
+          expected_revision_full=${lib.escapeShellArg repoHarnessRevision}
 
           hooks_file="$HOME/.codex/hooks.json"
           config_file="$HOME/.codex/config.toml"
           [ -f "$hooks_file" ] || { echo "Nix-managed Codex hooks are missing: $hooks_file" >&2; exit 1; }
           [ -f "$config_file" ] || { echo "Nix-managed Codex config is missing: $config_file" >&2; exit 1; }
 
-          jq -e --arg revision "$expected_revision" '
+          jq -e --arg revision "$expected_revision_full" '
             .protocol == 1 and .repo_harness.revision == $revision
           ' "$projection" >/dev/null || {
-            echo "committed Codex projection does not match Repo Harness pin $expected_revision" >&2
+            echo "committed Codex projection does not match Repo Harness pin $expected_revision_full" >&2
             exit 1
           }
-          jq -e --arg revision "$expected_revision" '
+          jq -e --arg revision "$expected_revision_full" '
             .protocol == 1 and .repo_harness_revision == $revision
           ' "$waza_projection" >/dev/null || {
-            echo "committed Waza projection does not match Repo Harness pin $expected_revision" >&2
+            echo "committed Waza projection does not match Repo Harness pin $expected_revision_full" >&2
             exit 1
           }
 
@@ -1083,7 +1083,7 @@
           version="$("$cli" --version)"
           echo "Repo Harness Nix deployment check passed."
           echo "  runtime version: $version"
-          echo "  revision: $expected_revision"
+          echo "  revision: $expected_revision_full"
           echo "  Codex hooks: exact Nix projection"
           echo "  hook trust hashes: $trust_seen/$trust_total"
           echo "  Waza projection: present"
