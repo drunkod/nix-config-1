@@ -1,6 +1,6 @@
 # Plan: Repo Harness upstream synchronization and Nix runtime update
 
-> **Status**: Executing
+> **Status**: Complete
 > **Date**: 2026-10-03
 > **Target host**: m1-min
 > **Old runtime pin**: 3d0ada93d2d370627b12907a84b2b567ba3c8751
@@ -50,3 +50,21 @@ flake.lock is not an expected change.
 ## Rollback
 
 Re-activate the previous Nix generation and restore runtime-source.json, Codex projection, and Waza projection to the previous 3d0ada93-bound state. Runtime directories are immutable per revision, so the old runtime remains available until ordinary Nix/user-state cleanup.
+
+## Completion record
+
+Completed on 2026-10-03.
+
+- Fork drunkod/repo-harness synchronized with current Ancienttwo/repo-harness upstream and published on main.
+- Final fork runtime revision: ce4a387c0427100d8fd44bfb1d96aa3f638f4956.
+- Preserved fork-specific dynamic contract-run outer-timeout behavior.
+- Repaired the upstream 0.20 package Sprint runtime so start-task --execute uses the slim planning flow.
+- Nix runtime, Codex projection, and Waza projection all pin the same final Repo Harness revision.
+- flake.lock remained unchanged.
+- Targeted Repo Harness Nix checks passed.
+- Full nix flake check --keep-going passed for the host system.
+- Protected runtime smoke passed on the active generation.
+- Final live repo-harness-check passed with exact Nix hook projection, 12/12 trust hashes, and Waza present.
+- Long-running regression canary completed in 126.45 seconds with status: pass and both worker/verifier timed_out: false, proving the old 120-second outer-dispatch ceiling is gone.
+- Active Repo Harness version: 0.20.0.
+- Active Repo Harness revision: ce4a387c0427100d8fd44bfb1d96aa3f638f4956.
