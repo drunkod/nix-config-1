@@ -155,8 +155,14 @@ rh-sync-waza
 rh-sync-host-config --check
 rh-sync-waza --check
 sudo darwin-rebuild switch --flake .#m1-min
-repo-harness setup check --target codex --json
+rh-check
 ```
+
+`rh-check` validates the declarative Nix deployment: exact pinned runtime,
+Nix-owned Codex hooks, all committed hook trust hashes, and managed Waza skills/rules.
+The broader upstream readiness audit remains available separately as
+`repo-harness setup check --target codex --json`; it may report non-Nix host or
+repository readiness findings that are outside the Nix deployment contract.
 
 After that switch, every new Repo Harness project reuses the same global Waza
 `think`, `hunt`, `check`, and `health` skills. Project adoption remains repo-local;
@@ -170,12 +176,16 @@ machine. Repositories outside that boundary still use normal Codex trust handlin
 Known repositories may also remain as explicit project entries for clients that
 bypass the shell launcher.
 
-After activation, restart Codex and verify without accepting or persisting any new
-Repo Harness hook trust manually:
+After activation, restart Codex and verify the Nix-owned deployment without
+accepting or persisting any new Repo Harness hook trust manually:
 
 ```bash
-repo-harness setup check --target codex --json
+rh-check
+rh-smoke
 ```
+
+Use `repo-harness setup check --target codex --json` only when you also want the
+upstream/global readiness audit in addition to the Nix deployment check.
 
 A new project under `~/Documents/work` needs only repo-local adoption:
 

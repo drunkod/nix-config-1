@@ -4,7 +4,7 @@
 > **Date**: 2026-10-03
 > **Target host**: m1-min
 > **Old runtime pin**: 3d0ada93d2d370627b12907a84b2b567ba3c8751
-> **Target runtime pin**: 204b31867fb98e0e424358a6e642559c2db1a308
+> **Target runtime pin**: ce4a387c0427100d8fd44bfb1d96aa3f638f4956
 
 ## Goal
 
@@ -23,10 +23,11 @@ Update the Nix-managed Repo Harness runtime to a published fork revision that co
 
 ## Completed prerequisite
 
-The fork synchronization is published as:
-- drunkod/repo-harness@204b31867fb98e0e424358a6e642559c2db1a308
+The fork synchronization and post-sync compatibility repair are published as:
+- drunkod/repo-harness@ce4a387c0427100d8fd44bfb1d96aa3f638f4956
 - merge commit eb5dbd3d: synchronize current upstream main
 - commit 204b3186: carry forward the dynamic outer-timeout implementation
+- commit ce4a387c: align package Sprint execution with the upstream 0.20 slim planning runtime
 
 ## Expected Nix changes
 
@@ -43,7 +44,7 @@ flake.lock is not an expected change.
 - Nix pre-activation: evaluate/build darwinConfigurations.m1-min.system.
 - Projection sync: repo-harness-sync-host-config --check and repo-harness-sync-waza --check.
 - Nix checks: Repo Harness projection schema + m1-min projection checks.
-- Host: repo-harness --version, runtime lock/revision readback, repo-harness setup check --target codex --json, repo-harness-check.
+- Host: repo-harness --version, runtime lock/revision readback, repo-harness-check, protected runtime smoke, plus the upstream repo-harness setup check as a separate advisory readiness audit.
 - Regression canary: a >120-second contract-run run must remain alive past the old outer dispatcher ceiling and finish under its declared budget.
 
 ## Rollback

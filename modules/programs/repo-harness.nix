@@ -1025,7 +1025,71 @@
           set -euo pipefail
 
           cli=${lib.escapeShellArg (lib.getExe repoHarnessLauncher)}
-          exec "$cli" setup check --json
+          projection=${lib.escapeShellArg ./repo-harness/codex-projection.json}
+          waza_projection=${lib.escapeShellArg ./repo-harness/waza-source.json}
+          expected_revision=${lib.escapeShellArg repoHarnessRevision}
+          ${repoHarnessAssertInstalled}
+
+          hooks_file="$HOME/.codex/hooks.json"
+          config_file="$HOME/.codex/config.toml"
+          [ -f "$hooks_file" ] || { echo "Nix-managed Codex hooks are missing: $hooks_file" >&2; exit 1; }
+          [ -f "$config_file" ] || { echo "Nix-managed Codex config is missing: $config_file" >&2; exit 1; }
+
+          jq -e --arg revision "$expected_revision" '
+            .protocol == 1 and .repo_harness.revision == $revision
+          ' "$projection" >/dev/null || {
+            echo "committed Codex projection does not match Repo Harness pin $expected_revision" >&2
+            exit 1
+          }
+          jq -e --arg revision "$expected_revision" '
+            .protocol == 1 and .repo_harness_revision == $revision
+          ' "$waza_projection" >/dev/null || {
+            echo "committed Waza projection does not match Repo Harness pin $expected_revision" >&2
+            exit 1
+          }
+
+          expected_hooks="$(jq -cS '.hooks' "$projection")"
+          actual_hooks="$(jq -cS '.' "$hooks_file")"
+          [ "$actual_hooks" = "$expected_hooks" ] || {
+            echo "live Codex hooks differ from the committed Nix projection" >&2
+            exit 1
+          }
+
+          trust_total="$(jq '.trust | length' "$projection")"
+          trust_seen=0
+          while IFS= read -r hash; do
+            grep -Fq "$hash" "$config_file" || {
+              echo "missing Nix-managed Repo Harness hook trust hash: $hash" >&2
+              exit 1
+            }
+            trust_seen=$((trust_seen + 1))
+          done < <(jq -r '.trust[]' "$projection")
+          [ "$trust_seen" -eq "$trust_total" ] || exit 1
+
+          while IFS= read -r skill; do
+            [ -f "$HOME/.codex/skills/$skill/SKILL.md" ] || {
+              echo "missing Nix-managed Waza skill: $skill" >&2
+              exit 1
+            }
+          done < <(jq -r '.managed_skills[]' "$waza_projection")
+
+          while IFS= read -r rule; do
+            [ -e "$HOME/.codex/rules/$rule" ] || {
+              echo "missing Nix-managed Waza shared rule: $rule" >&2
+              exit 1
+            }
+          done < <(jq -r '.shared_rules[]' "$waza_projection")
+
+          version="$("$cli" --version)"
+          echo "Repo Harness Nix deployment check passed."
+          echo "  runtime version: $version"
+          echo "  revision: $expected_revision"
+          echo "  Codex hooks: exact Nix projection"
+          echo "  hook trust hashes: $trust_seen/$trust_total"
+          echo "  Waza projection: present"
+          echo
+          echo "Upstream/global readiness audit remains available separately:"
+          echo "  repo-harness setup check --json"
         '';
       };
     in
