@@ -52,10 +52,13 @@ scripts and non-interactive shells.
 ## Update Repo Harness
 
 Repo Harness is not a flake input and is not recorded in `flake.lock`.
-Therefore, `nix flake update` does not update the CLI. The source configured in
-`modules/programs/repo-harness.nix` is the fork's adopted `main` branch.
+Therefore, `nix flake update` does not update the CLI. The authoritative immutable
+fork revision is recorded in `modules/programs/repo-harness/runtime-source.json`,
+and the Nix module installs exactly that published Git commit. Before changing the
+pin, synchronize `drunkod/repo-harness` with `Ancienttwo/repo-harness` and publish
+the validated fork commit.
 
-Repo Harness 0.19.0 requires Bun 1.4.0 or newer and Herdr 0.9.0 or newer. The
+Repo Harness 0.20.0 requires Bun 1.4.0 or newer and Herdr 0.9.0 or newer. The
 module currently pins the validated macOS arm64 Bun 1.4.0 and Herdr 0.9.0
 release assets directly because the repository's current nixpkgs revisions are
 older than those runtime floors.

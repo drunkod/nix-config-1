@@ -7,7 +7,7 @@
       ...
     }:
     let
-      # Repo Harness 0.19.0 requires Bun >= 1.4.0 and Herdr >= 0.9.0.
+      # Repo Harness 0.20.0 requires Bun >= 1.4.0 and Herdr >= 0.9.0.
       # Pin platform-correct release assets until nixpkgs carries those floors.
       platform = pkgs.stdenv.hostPlatform.system;
       bunRelease =
