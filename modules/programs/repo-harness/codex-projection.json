@@ -1,8 +1,8 @@
 {
   "protocol": 1,
   "repo_harness": {
-    "revision": "9ff9161c95564a7ceaafbdc38cbb8d1fb3302e53",
-    "source": "git+https://github.com/drunkod/repo-harness.git#9ff9161c95564a7ceaafbdc38cbb8d1fb3302e53"
+    "revision": "327800a8246c5a812dd18c0238aa87e40acdca2e",
+    "source": "git+https://github.com/drunkod/repo-harness.git#327800a8246c5a812dd18c0238aa87e40acdca2e"
   },
   "codex": {
     "executable": "/nix/store/81v3s4s0cl7yxwj68rr34p88vkrvj3ns-codex-0.154.0/bin/codex"
@@ -14,7 +14,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook SessionStart --route default; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook SessionStart --route default",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook SessionStart --route default; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook SessionStart --route default",
               "timeout": 30
             }
           ]
@@ -25,7 +25,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook PreToolUse --route edit; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook PreToolUse --route edit",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook PreToolUse --route edit; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook PreToolUse --route edit",
               "timeout": 30
             }
           ],
@@ -35,7 +35,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook PreToolUse --route subagent; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook PreToolUse --route subagent",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook PreToolUse --route subagent; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook PreToolUse --route subagent",
               "timeout": 30
             }
           ],
@@ -47,7 +47,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook PostToolUse --route edit; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook PostToolUse --route edit",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook PostToolUse --route edit; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook PostToolUse --route edit",
               "timeout": 30
             }
           ],
@@ -57,7 +57,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook PostToolUse --route bash; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook PostToolUse --route bash",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook PostToolUse --route bash; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook PostToolUse --route bash",
               "timeout": 30
             }
           ],
@@ -67,7 +67,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook PostToolUse --route always; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook PostToolUse --route always",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook PostToolUse --route always; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook PostToolUse --route always",
               "timeout": 30
             }
           ]
@@ -78,7 +78,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook UserPromptSubmit --route default; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook UserPromptSubmit --route default",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook UserPromptSubmit --route default; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook UserPromptSubmit --route default",
               "timeout": 30
             }
           ]
@@ -87,7 +87,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook UserPromptSubmit --route inbox; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook UserPromptSubmit --route inbox",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook UserPromptSubmit --route inbox; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook UserPromptSubmit --route inbox",
               "timeout": 30
             }
           ]
@@ -96,7 +96,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook UserPromptSubmit --route delegation; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook UserPromptSubmit --route delegation",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook UserPromptSubmit --route delegation; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook UserPromptSubmit --route delegation",
               "timeout": 30
             }
           ]
@@ -107,7 +107,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook SubagentStart --route context; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook SubagentStart --route context",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook SubagentStart --route context; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook SubagentStart --route context",
               "timeout": 30
             }
           ]
@@ -118,7 +118,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook SubagentStop --route quality; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook SubagentStop --route quality",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook SubagentStop --route quality; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook SubagentStop --route quality",
               "timeout": 30
             }
           ]
@@ -129,7 +129,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/32g1vmnksfiv3qyfbqdkyqv2xqdw3bx7-repo-harness-hook/bin/repo-harness-hook Stop --route default; fi; [ -x /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/vj17s3vifbhbygb3rrjnjyzw9jwccf9k-repo-harness/bin/repo-harness hook Stop --route default",
+              "command": ": repo-harness-managed-hook-v1; repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; export HOOK_REPO_ROOT=\"$repo\"; if [ -x /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook ]; then HOOK_HOST=codex exec /nix/store/4zjnhskj0qawd1rz9i6npjsjl28d8a6c-repo-harness-hook/bin/repo-harness-hook Stop --route default; fi; [ -x /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness ] || exit 0; HOOK_HOST=codex exec /nix/store/lhgvhahcqacnd2k1xvzjxhdnan1fhy99-repo-harness/bin/repo-harness hook Stop --route default",
               "timeout": 150
             }
           ]
@@ -138,17 +138,17 @@
     }
   },
   "trust": {
-    "post_tool_use:0:0": "sha256:41e96c5796b4d8f8a4f327a382aa6964001619effb033fd74d54e71c8e9baae5",
-    "post_tool_use:1:0": "sha256:e627413cb1608c236188d95e28493267cd18e681d6ff4c0f98500482821c6df9",
-    "post_tool_use:2:0": "sha256:831bb2b8cc5ead8b93a213236ca3192f242b9d744f0dc96b16b61ea89a0922c3",
-    "pre_tool_use:0:0": "sha256:6d96b27962b2fe07d71216bd3710067532355dcb51b72904d056ce331338b902",
-    "pre_tool_use:1:0": "sha256:777420de1703a9f5a978a1c3a86813cb983c22f2c5b1e8f3e8dbc38ce76873c3",
-    "session_start:0:0": "sha256:f7ce0443a10b86aeee4af750524c6857218658f78dcdb15771e9c94e1763465a",
-    "stop:0:0": "sha256:5d41a8105c96d83a82641f4318d542446af1acb226521a8b44236c91bb9c4620",
-    "subagent_start:0:0": "sha256:0e3c0c656c546c314f3c886655619023442c723eabdb2038e8d5750a90f2d5fe",
-    "subagent_stop:0:0": "sha256:cc8dbc4b9019c6030804b60d436feeafe1b3068bc8de57f52f75af73a0b18add",
-    "user_prompt_submit:0:0": "sha256:841f3ffc3a01e94180b9eaa3d2dc1c00a157e389f3ffa8a701be4aa71f6a70a3",
-    "user_prompt_submit:1:0": "sha256:966c5427da8d228bd894046e484afe11efb901ce35584357f3a71a6068bb5215",
-    "user_prompt_submit:2:0": "sha256:936108dfd1c6175c8b5e45357a65c251c704030189e2cc7441b90db3ba6cd547"
+    "post_tool_use:0:0": "sha256:556dbd3ad8ec32c451efd4548cbf1b8de63180f749bdb09dc5b725264560f87e",
+    "post_tool_use:1:0": "sha256:003f04dc9712d58772eeb1743e79e165358e8923e7f3381afaab45457a80c31e",
+    "post_tool_use:2:0": "sha256:f68f004c88e5be1e0ee3742f6dc51ea27e660276cc10eb61483e17ea8fb5ff48",
+    "pre_tool_use:0:0": "sha256:57b5ce3e6fb277b8881d847be8c897f996e17b4cef3a5ffb4db2dfbf713350cd",
+    "pre_tool_use:1:0": "sha256:e6544042729ed32fc25d9cd372cbb7aa7a7141a404cbee1232db233c77b87c65",
+    "session_start:0:0": "sha256:2e3fa01a847411b6d784bf4711246a7712ab85d45c648e79a47a65844673054c",
+    "stop:0:0": "sha256:6b8880e38fb7ee85c43bc60fa4a486ced20b5af66568b53b319ba5c05bc91ba9",
+    "subagent_start:0:0": "sha256:ef4286436314f154d9d4ea0184724f12fb29714cc31e18686f09676e3481b30a",
+    "subagent_stop:0:0": "sha256:c66c39915eb3e98b1295d4db37de93dbced019cea8abd1d507c20c71d4b6f81c",
+    "user_prompt_submit:0:0": "sha256:707b150f7c83d802f9ae5f1876b92a4828858e272bbfb80e56c523fe9edcf90e",
+    "user_prompt_submit:1:0": "sha256:fcaa7da4e7211b7ff29690ebac08a60827db18abc41c6332ac4a0ee6da91ccf1",
+    "user_prompt_submit:2:0": "sha256:a70450b0954c92798daeabb0701020337f149b25208c92731ee9ecc301dc4520"
   }
 }
