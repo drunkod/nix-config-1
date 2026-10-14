@@ -72,7 +72,7 @@ nix shell nixpkgs#coreutils --command \
 For a Standard/Strict release candidate:
 
 ```bash
-repo-harness run check-task-workflow -- --strict
+repo-harness run check-task-workflow
 repo-harness cross-review \
   --repo "$PWD" \
   --base "$BASE" \

@@ -15,10 +15,11 @@ CodeGraph only after adoption by continuing to guide 2.
 | `drunkod/repo-harness` | Repo Harness CLI, repository contract, MCP protocol, workspace and security behavior |
 | `drunkod/nix-config-1` | Installation and operation on this Mac: launchd, loopback port, Quick Tunnel, OAuth helper, aliases |
 
-The current authority for this guide is the installed `repo-harness 0.15.0`
-package. `rh-bootstrap` installs the moving upstream `mvp` branch, so
-`repo-harness --version` confirms the package version but not an exact source
-commit. Re-run the onboarding previews and MCP checks after refreshing the CLI.
+Repo Harness is installed from the immutable fork revision in
+`modules/programs/repo-harness/runtime-source.json`, not from a moving upstream
+branch. The v0.22.1 workflow check is read-only diagnostics and does not
+provide a strict acceptance gate. Re-run onboarding previews, inspect project
+state, and use the release-specific acceptance checks after upgrading.
 
 ## Terminology that must not be mixed
 
@@ -228,7 +229,7 @@ For standard adoption, verify a fresh detached worktree:
 ```bash
 git worktree add --detach ../REPOSITORY-adoption-check HEAD
 env -C ../REPOSITORY-adoption-check \
-  repo-harness run check-task-workflow --strict
+  repo-harness run check-task-workflow
 git worktree remove ../REPOSITORY-adoption-check
 ```
 
