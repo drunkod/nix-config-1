@@ -1,6 +1,12 @@
-# Repo Harness workflow concepts on installed `0.15.0`
+# Repo Harness workflow concepts (historical reference)
 
 Shared rules: [`Repo Harness safety`](../safety.md).
+
+**Version note:** This guide originated with 0.15.0 and includes historical
+capabilities. On the Nix-managed host, version 0.22.1 is pinned by
+`modules/programs/repo-harness/runtime-source.json`; prefer
+`REPO-HARNESS.md` and the installed CLI help for the current contract.
+`check-task-workflow` is now read-only diagnostics, not a strict gate.
 
 The public workflow model is:
 
@@ -48,7 +54,7 @@ Use the installed equivalents instead.
 | Record continuation liveness | `repo-harness state attempt ...` |
 | Build capability-scoped context | `repo-harness capability-context ...` |
 | Create or maintain artifacts | reviewed Markdown or `repo-harness run <helper>` |
-| Check workflow consistency | `repo-harness run check-task-workflow -- --strict` |
+| Check workflow consistency | `repo-harness run check-task-workflow` |
 | Prepare a handoff | `repo-harness run prepare-handoff` or `prepare-codex-handoff` |
 | Resume a Codex handoff | `repo-harness run codex-handoff-resume -- --cwd "$PWD" --print-prompt` |
 | Cross-provider review | `repo-harness cross-review` |

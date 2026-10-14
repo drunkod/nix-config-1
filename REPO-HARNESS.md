@@ -192,7 +192,7 @@ A new project under `~/Documents/work` needs only repo-local adoption:
 ```bash
 cd ~/Documents/work/new-project
 repo-harness init
-repo-harness run check-task-workflow --strict
+repo-harness run check-task-workflow
 codex
 ```
 

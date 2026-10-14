@@ -71,7 +71,7 @@ codegraph affected \
 For Standard/Strict work, run the configured workflow check:
 
 ```bash
-repo-harness run check-task-workflow -- --strict
+repo-harness run check-task-workflow
 ```
 
 Digest the reviewed changed-file list using GNU coreutils on macOS:

@@ -34,7 +34,7 @@ repo-harness state resolve \
   --target-path docs/spec.md \
   --operation inspect \
   --json
-repo-harness run check-task-workflow -- --strict
+repo-harness run check-task-workflow
 git status --short
 ```
 

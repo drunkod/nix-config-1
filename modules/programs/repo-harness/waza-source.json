@@ -1,11 +1,11 @@
 {
   "protocol": 1,
-  "repo_harness_revision": "ce4a387c0427100d8fd44bfb1d96aa3f638f4956",
+  "repo_harness_revision": "9ff9161c95564a7ceaafbdc38cbb8d1fb3302e53",
   "source_repo": "tw93/Waza",
   "source_url": "https://github.com/tw93/Waza.git",
   "primary_host": "codex",
-  "rev": "c3b74dd5845b39a80a79c36bb82b028947674a05",
-  "hash": "sha256-AImO2202V1m7B6E+yuX4OuPnW4/cKR6MFP2omnAI4rs=",
+  "rev": "318d6c2c219894798b09c2b39d7f83d0be1a313c",
+  "hash": "sha256-qd2SSNyutioIMLaARMvQfgmoeA2OGTsxRosVGYYSWQQ=",
   "managed_skills": [
     "think",
     "hunt",

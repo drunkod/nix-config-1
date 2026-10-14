@@ -68,7 +68,7 @@ repo-harness run --help
 Forward helper-specific arguments after `--`:
 
 ```bash
-repo-harness run check-task-workflow -- --strict
+repo-harness run check-task-workflow
 repo-harness run codex-handoff-resume -- --cwd "$PWD" --print-prompt
 ```
 

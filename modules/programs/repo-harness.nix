@@ -324,7 +324,7 @@
           echo "Next steps inside a target repository:"
           echo "  rh-init"
           echo "  repo-harness init"
-          echo "  repo-harness run check-task-workflow --strict"
+          echo "  repo-harness run check-task-workflow"
         '';
       };
 
